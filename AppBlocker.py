@@ -4,7 +4,9 @@ import threading
 import time
 import pyfiglet
 
-text = "Hello Robocode !"
+from tkinter import simpledialog, messagebox
+
+text = "Hello User !"
 font = "slant"
 banner = pyfiglet.figlet_format(text, font = font)
 
@@ -13,7 +15,6 @@ smics = pyfiglet.figlet_format("by smics_play", font = "slant")
 PROCESS_NAME = ""
 monitor_thread = None
 monitoring_active = False
-
 
 def close_app():
     global PROCESS_NAME
@@ -192,6 +193,34 @@ def refresh_process_list():
 
 button_refresh = tk.Button(frame_input, text="Обновить процессы", command=refresh_process_list)
 button_refresh.pack(side=tk.LEFT, padx=5)
+
+root.withdraw()  # Скрываем главное окно временно
+ADMIN_PASSWORD = simpledialog.askstring(
+    "Пароль администратора",
+    "Введите пароль, который будет использоваться для выхода:",
+    show="*"
+)
+if not ADMIN_PASSWORD:
+    messagebox.showerror("Ошибка", "Пароль не задан! Программа будет закрыта.")
+    root.destroy()
+    exit()
+root.deiconify()  # Показываем главное окно
+
+def exit_app():
+    password_input = simpledialog.askstring(
+        "Выход",
+        "Введите пароль администратора для выхода:",
+        show="*"
+    )
+    if password_input == ADMIN_PASSWORD:
+        root.destroy()
+    else:
+        messagebox.showerror("Ошибка", "Неверный пароль! Выход запрещён.")
+
+
+button_exit = tk.Button(frame_input, text="Выйти", command=exit_app, bg="red", fg="white")
+button_exit.pack(side=tk.LEFT, padx=5)
+
 
 # Перехват крестика
 root.protocol("WM_DELETE_WINDOW", on_close)
