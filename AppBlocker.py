@@ -3,6 +3,10 @@ import tkinter as tk
 import threading
 import time
 import pyfiglet
+import os
+import sys
+import json
+import subprocess
 
 from tkinter import simpledialog, messagebox
 
@@ -13,6 +17,7 @@ banner = pyfiglet.figlet_format(text, font = font)
 smics = pyfiglet.figlet_format("by smics_play", font = "slant")
 
 PROCESS_NAME = ""
+ADMIN_PASSWORD = ""
 monitor_thread = None
 monitoring_active = False
 
@@ -30,6 +35,38 @@ def close_app():
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
 
+def base_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+APP_DIR = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__))
+CONFIG_PATH = os.path.join(APP_DIR, "config.json")
+SECURE_EXE  = os.path.join(APP_DIR, "SecureSystem.exe")
+
+# Флаг, чтобы не мигало консольное окно при запуске процессов
+CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000 if os.name == "nt" else 0)
+
+# -------------- СОХРАНЕНИЕ КОНФИГА ----------------
+
+def save_config(status="RUNNING"):
+    config = {
+        "process_name": PROCESS_NAME,
+        "admin_password": ADMIN_PASSWORD,
+        "status": status
+    }
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(config, f)
+
+def load_config():
+    global PROCESS_NAME, ADMIN_PASSWORD
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        PROCESS_NAME = config.get("process_name", "")
+        ADMIN_PASSWORD = config.get("admin_password", "")
+        return config.get("status", "RUNNING")
+    return "RUNNING"
 
 def get_user_processes():
     """Возвращает список только не системных процессов"""
@@ -52,12 +89,13 @@ def get_user_processes():
         "system idle process", "textinputhost.exe",
         "wmiregistrationservice.exe", "wudfhost.exe", "wmiapsrv.exe",
         "wmiprvse.exe", "backgroundtaskhost.exe",
-        # новые дополнения
         "conhost.exe", "ctfmon.exe", "dwm.exe", "fontdrvhost.exe",
         "fsnotifier.exe", "full-line-inference.exe", "ipf_helper.exe",
         "ipf_uf.exe", "ipfsvc.exe", "jhi_service.exe", "msedgewebview2.exe",
         "powershell.exe", "pycharm64.exe", "python.exe", "sihost.exe",
-        "spoolsv.exe", "taskhostw.exe", "unsecapp.exe", "MoUsoCoreWorker.exe", "ApplicationFrameHost.exe"
+        "spoolsv.exe", "taskhostw.exe", "unsecapp.exe", "MoUsoCoreWorker.exe", "ApplicationFrameHost.exe",
+        "LenovoVantage-(GenericTelemetryAddin).exe",
+        "audiodg.exe", "smartscreen.exe", "appblocker.exe", "securesystem.exe"
     }
     processes = []
     for proc in psutil.process_iter(['name']):
@@ -82,6 +120,27 @@ def is_app_running():
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
     return False
+
+def watch_secure_system():
+    """Следим за SecureSystem.exe и поднимаем его из той же папки, если упал."""
+    while True:
+        found = False
+        for proc in psutil.process_iter(['name', 'exe']):
+            try:
+                name = (proc.info.get('name') or '').lower()
+                exe  = (proc.info.get('exe')  or '').lower()
+                if 'securesystem' in name or (exe and exe.endswith('securesystem.exe')):
+                    found = True
+                    break
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
+
+        if not found and os.path.exists(SECURE_EXE):
+            try:
+                subprocess.Popen([SECURE_EXE], cwd=base_dir(), creationflags=CREATE_NO_WINDOW)
+            except Exception as e:
+                log(f"❌ Ошибка запуска SecureSystem: {e}")
+        time.sleep(1)
 
 
 # Обновление логов в окне
@@ -127,6 +186,7 @@ def start_monitoring():
 
     # 2. Обновляем глобальную переменную и заголовок
     PROCESS_NAME = input_name
+    save_config()  # ✅ сохраняем, чтобы при следующем запуске процесс не забывался
     root.title(f"Blocker для: {PROCESS_NAME}")
 
     # 3. Запускаем поток, если он еще не запущен
@@ -147,6 +207,22 @@ def start_monitoring():
 # Обработка закрытия окна
 def on_close():
     log("❗ Нажат крестик, но окно не будет закрыто.")
+
+def ensure_secure_system():
+    """Запускает SecureSystem из той же папки, если его нет."""
+    for proc in psutil.process_iter(['name', 'exe']):
+        try:
+            name = (proc.info.get('name') or '').lower()
+            exe  = (proc.info.get('exe')  or '').lower()
+            if 'securesystem' in name or (exe and exe.endswith('securesystem.exe')):
+                return False  # уже запущен
+        except:
+            pass
+
+    if os.path.exists(SECURE_EXE):
+        subprocess.Popen([SECURE_EXE], cwd=base_dir(), creationflags=CREATE_NO_WINDOW)
+        return True
+    return False
 
 
 # ----------------- Интерфейс -----------------
@@ -194,17 +270,23 @@ def refresh_process_list():
 button_refresh = tk.Button(frame_input, text="Обновить процессы", command=refresh_process_list)
 button_refresh.pack(side=tk.LEFT, padx=5)
 
-root.withdraw()  # Скрываем главное окно временно
-ADMIN_PASSWORD = simpledialog.askstring(
-    "Пароль администратора",
-    "Введите пароль, который будет использоваться для выхода:",
-    show="*"
-)
+# ----------------- АВТО ЗАПУСК -----------------
+load_config()  # 🟢 Сначала пробуем загрузить пароль из config.json
+
 if not ADMIN_PASSWORD:
-    messagebox.showerror("Ошибка", "Пароль не задан! Программа будет закрыта.")
-    root.destroy()
-    exit()
-root.deiconify()  # Показываем главное окно
+    # Если пароль не сохранён — значит запуск ручной
+    root.withdraw()
+    ADMIN_PASSWORD = simpledialog.askstring(
+        "Пароль администратора",
+        "Введите пароль, который будет использоваться для выхода:",
+        show="*"
+    )
+    if not ADMIN_PASSWORD:
+        messagebox.showerror("Ошибка", "Пароль не задан! Программа будет закрыта.")
+        root.destroy()
+        sys.exit(0)
+    save_config()
+root.deiconify()
 
 def exit_app():
     password_input = simpledialog.askstring(
@@ -213,6 +295,24 @@ def exit_app():
         show="*"
     )
     if password_input == ADMIN_PASSWORD:
+        save_config(status="EXIT")  # 🟡 вот оно!
+        time.sleep(2)
+        try:
+            save_config(status="EXIT")  # просто записываем EXIT
+            log("📝 EXIT записан в config.json")
+        except Exception as e:
+            log(f"⚠️ Ошибка при записи EXIT: {e}")
+
+        # 🧨 Убиваем SecureSystem.exe
+        for proc in psutil.process_iter(['name']):
+            try:
+                if proc.info['name'] and proc.info['name'].lower() == "securesystem.exe":
+                    proc.terminate()
+                    log("🛑 SecureSystem завершён.")
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+
+        time.sleep(1)
         root.destroy()
     else:
         messagebox.showerror("Ошибка", "Неверный пароль! Выход запрещён.")
@@ -229,4 +329,19 @@ root.protocol("WM_DELETE_WINDOW", on_close)
 log(banner)
 log("Введите название процесса и нажмите 'Начать'.")
 refresh_process_list()
+
+# ----------------- АВТО ЗАПУСК -----------------
+if ensure_secure_system():
+    log("🛡 Система защиты от завершения запущенна")
+
+if PROCESS_NAME:
+    entry_process.insert(0, PROCESS_NAME)
+    entry_process.config(state=tk.DISABLED)
+    button_start.config(state=tk.DISABLED)
+    monitoring_active = True
+    threading.Thread(target=monitor_process, daemon=True).start()
+    log(f"✅ Автовосстановление мониторинга для '{PROCESS_NAME}'")
+
+threading.Thread(target=watch_secure_system, daemon=True).start()
+# В самом конце перед root.mainloop():
 root.mainloop()
