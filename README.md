@@ -87,4 +87,4 @@ pyinstaller --onefile --noconsole SecureSystem.py
 
 🧑‍💻 Автор
 
-Создан с ❤️ от @smicsic
+Создан с ❤️ от @smics_play/smicsic
