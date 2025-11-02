@@ -8,6 +8,7 @@ import json
 import pyfiglet
 import datetime
 import winreg
+import ctypes
 import customtkinter as ctk
 from tkinter import simpledialog, messagebox
 from threading import Lock, Event
@@ -30,7 +31,16 @@ CONFIG_LOCK = Lock()
 RUN_SUBKEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 shutdown_event = Event()
 watch_active = False
+HOSTS_PATH = r"C:\Windows\System32\drivers\etc\hosts"
+BLOCK_MARKER = "# AppBlocker managed"
+EXIT_LOCK = Lock()
 
+def is_admin():
+    """Проверяет, запущено ли приложение с правами администратора"""
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except:
+        return False
 
 def remove_from_startup_everywhere(app_name="SecureSystem", exe_name="SecureSystem.exe"):
     """Полностью удаляет приложение из автозагрузки Windows"""
@@ -161,51 +171,83 @@ def remove_from_startup_everywhere(app_name="SecureSystem", exe_name="SecureSyst
 def exit_app_no_password():
     global monitoring_active, watch_active, APP_CLOSING
 
-    APP_CLOSING = True
+    # ✅ ЗАЩИТА: НЕ УДАЛЯЕМ CONFIG ПРИ ПЕРВОМ ЗАПУСКЕ
+    if not PROCESS_NAME:
+        log("⚠️ Выход отменён: процесс не задан (первый запуск)")
+        return
+
+    if not monitoring_active:
+        log("⚠️ Выход отменён: мониторинг не был запущен")
+        return
+
+    with EXIT_LOCK:
+        if APP_CLOSING:
+            return
+        APP_CLOSING = True
+
     log("⏰ Выход без пароля (таймер/автоматический)...")
 
-    # ✅ ОСТАНАВЛИВАЕМ ПОТОКИ
+    # ОСТАНАВЛИВАЕМ ПОТОКИ
     monitoring_active = False
     watch_active = False
     shutdown_event.set()
     time.sleep(1.5)
 
+    # ✅ СНАЧАЛА РАЗБЛОКИРУЕМ САЙТЫ
+    try:
+        sites = load_blocked_sites()
+        if sites:
+            log(f"🧼 Удаляем {len(sites)} сайтов из hosts...")
+            save_blocked_sites([])
+
+            for attempt in range(3):
+                if apply_hosts_block([]):
+                    log("✅ Все сайты разблокированы")
+                    break
+                else:
+                    log(f"⚠️ Попытка {attempt + 1}/3, повторяю...")
+                    time.sleep(0.5)
+        else:
+            log("ℹ️ Список сайтов пуст")
+    except Exception as e:
+        log(f"⚠️ Ошибка при очистке сайтов: {e}")
+
+    # ТЕПЕРЬ УДАЛЯЕМ CONFIG
+    create_exit_sentinel()
     save_config(status="EXIT")
+
+    # ЗАВЕРШАЕМ SecureSystem
+    for attempt in range(5):
+        killed = False
+        for proc in psutil.process_iter(['name', 'pid']):
+            try:
+                if proc.info['name'] and proc.info['name'].lower() == "securesystem.exe":
+                    proc.kill()
+                    killed = True
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+        if killed:
+            time.sleep(0.3)
+        else:
+            break
+
+        time.sleep(0.5)
 
     try:
         if os.path.exists(CONFIG_PATH):
             os.chmod(CONFIG_PATH, 0o666)
-            save_config(status="EXIT")
             os.remove(CONFIG_PATH)
-            log("🧹 config.json успешно удалён")
+            log("🧹 config.json удалён (exit_app_no_password)")
 
-            # ✅ АГРЕССИВНО УБИВАЕМ SecureSystem
-            for attempt in range(5):
-                killed = False
-                for proc in psutil.process_iter(['name', 'pid']):
-                    try:
-                        if proc.info['name'] and proc.info['name'].lower() == "securesystem.exe":
-                            try:
-                                proc.kill()
-                                killed = True
-                            except psutil.AccessDenied:
-                                proc.terminate()
-                                killed = True
-                    except (psutil.NoSuchProcess, psutil.AccessDenied):
-                        pass
-                if killed:
-                    time.sleep(0.3)
-                else:
-                    break
-
-            # ✅ УДАЛЯЕМ ИЗ АВТОЗАГРУЗКИ
-            remove_from_startup_everywhere("SecureSystem", "SecureSystem.exe")
-            log("🧹 SecureSystem удалён из автозагрузки")
-        else:
-            log("ℹ️ config.json уже отсутствует")
+        sentinel_path = os.path.join(base_dir(), "config.exit.lock")
+        if os.path.exists(sentinel_path):
+            os.chmod(sentinel_path, 0o666)
+            os.remove(sentinel_path)
+            log("🧹 config.exit.lock удалён (exit_app_no_password)")
     except Exception as e:
-        log(f"⚠️ Ошибка при удалении config.json: {e}")
+        log(f"⚠️ Ошибка при удалении файлов: {e}")
 
+    remove_from_startup_everywhere("SecureSystem", "SecureSystem.exe")
     root.after(500, root.destroy)
 
 def close_app():
@@ -232,23 +274,142 @@ CONFIG_PATH = os.path.join(APP_DIR, "config.json")
 SECURE_EXE  = os.path.join(APP_DIR, "SecureSystem.exe")
 EXIT_SENTINEL = os.path.join(APP_DIR, "config.exit.lock")
 
+if not is_admin():
+    print("⚠️ Программа запущена без прав администратора — выполняем перезапуск...")
+    try:
+        # перезапускаем AppBlocker с правами администратора
+        ctypes.windll.shell32.ShellExecuteW(
+            None, "runas", sys.executable, " ".join(sys.argv), None, 1
+        )
+    except Exception as e:
+        print(f"❌ Не удалось перезапустить с правами администратора: {e}")
+    sys.exit(0)
+
 # Флаг, чтобы не мигало консольное окно при запуске процессов
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000 if os.name == "nt" else 0)
+
+#блокировка сайтов
+def load_blocked_sites():
+    """Загружает список сайтов из config.json"""
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("blocked_sites", [])
+    return []
+
+def save_blocked_sites(sites):
+    """Сохраняет список сайтов в config.json"""
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    else:
+        data = {}
+    data["blocked_sites"] = sites
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+def apply_hosts_block(sites):
+    """Перезаписывает hosts, добавляя/удаляя заблокированные сайты (устойчиво к read-only)"""
+    try:
+        # ✅ Снимаем флаг "только чтение"
+        if os.path.exists(HOSTS_PATH) and not os.access(HOSTS_PATH, os.W_OK):
+            os.chmod(HOSTS_PATH, 0o666)
+
+        # ✅ Читаем текущие строки (с обработкой ошибок)
+        if os.path.exists(HOSTS_PATH):
+            try:
+                with open(HOSTS_PATH, "r", encoding="utf-8", errors="ignore") as f:
+                    lines = f.readlines()
+            except Exception as e:
+                log(f"⚠️ Ошибка чтения hosts: {e}")
+                lines = []
+        else:
+            lines = []
+
+        # ✅ ИСПРАВЛЕНО: Убираем ТОЛЬКО строки с маркером, оставляем остальные
+        new_lines = []
+        for line in lines:
+            # Пропускаем только строки с нашим маркером
+            if BLOCK_MARKER in line:
+                continue
+            # ВСЕ ОСТАЛЬНЫЕ СТРОКИ СОХРАНЯЕМ
+            new_lines.append(line)
+
+        # ✅ Добавляем новые блокировки (если список не пуст)
+        if sites:
+            # Добавляем пустую строку перед нашими записями для читаемости
+            if new_lines and not new_lines[-1].endswith('\n'):
+                new_lines.append('\n')
+
+            for site in sites:
+                new_lines.append(f"127.0.0.1 {site} {BLOCK_MARKER}\n")
+                new_lines.append(f"127.0.0.1 www.{site} {BLOCK_MARKER}\n")
+
+        # ✅ Перезаписываем файл
+        with open(HOSTS_PATH, "w", encoding="utf-8") as f:
+            f.writelines(new_lines)
+            f.flush()
+            os.fsync(f.fileno())
+
+        # ✅ Обновляем DNS
+        subprocess.run(["ipconfig", "/flushdns"], creationflags=CREATE_NO_WINDOW,
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if sites:
+            log(f"🌐 Hosts обновлён: {len(sites)} сайтов заблокировано")
+        else:
+            log("🧼 Hosts очищен от блокировок")
+
+        # ✅ Проверяем результат
+        with open(HOSTS_PATH, "r", encoding="utf-8") as f:
+            content = f.read()
+            if sites and BLOCK_MARKER not in content:
+                log("⚠️ КРИТИЧНО: Блокировки не применились!")
+                return False
+            if not sites and BLOCK_MARKER in content:
+                log("⚠️ КРИТИЧНО: Маркеры остались в hosts!")
+                return False
+
+        return True
+
+    except PermissionError:
+        log("❌ Нет прав для изменения hosts! Запусти от администратора.")
+        return False
+    except Exception as e:
+        log(f"⚠️ Ошибка при блокировке сайтов: {e}")
+        return False
 
 # -------------- СОХРАНЕНИЕ КОНФИГА ----------------
 
 def save_config(status="RUNNING"):
-    config = {
+    """Сохраняет конфиг, не удаляя список сайтов"""
+    data = {}
+
+    # ✅ Если файл уже существует — читаем его, чтобы не потерять blocked_sites
+    if os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception as e:
+            print(f"⚠️ Ошибка чтения config.json: {e}")
+            data = {}
+
+    # ✅ Обновляем только нужные ключи
+    data.update({
         "process_name": PROCESS_NAME,
         "admin_password": ADMIN_PASSWORD,
         "status": status,
         "timer_enabled": TIMER_ENABLED,
-        "timer_end": TIMER_END.timestamp() if TIMER_END else None,  # ← ЗАПЯТАЯ!
+        "timer_end": TIMER_END.timestamp() if TIMER_END else None,
         "secure_enabled": SECURE_ENABLED,
         "permanent_lock": PERMANENT_LOCK
-    }
+    })
+
+    # ✅ Сохраняем обратно
     with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-        json.dump(config, f)
+        json.dump(data, f, indent=2)
+        f.flush()
         os.fsync(f.fileno())
 
 def load_config():
@@ -265,6 +426,13 @@ def load_config():
         if end_timestamp:
             TIMER_END = datetime.datetime.fromtimestamp(end_timestamp)
         return config.get("status", "RUNNING")
+
+    if not os.path.exists(CONFIG_PATH):
+        try:
+            save_config()
+            print("🆕 Файл config.json был создан автоматически.")
+        except Exception as e:
+            print(f"⚠️ Не удалось создать config.json: {e}")
     return "RUNNING"
 
 def check_timer():
@@ -420,6 +588,10 @@ def start_monitoring():
     secure_switch.configure(state="disabled")
     timer_switch.configure(state="disabled")
     timer_entry.configure(state="disabled")
+    try:
+        remove_btn.configure(state="disabled")
+    except:
+        pass
     for widget in timer_frame.winfo_children():
         widget.configure(state="disabled")
 
@@ -508,19 +680,46 @@ def exit_app():
         messagebox.showerror("Ошибка", "Неверный пароль! Выход запрещён.")
         return
 
-    APP_CLOSING = True
+    with EXIT_LOCK:
+        if APP_CLOSING:
+            return
+        APP_CLOSING = True
+
     log("🚪 Начинаем процедуру выхода...")
 
-    # ✅ ШАГ 1: ОСТАНАВЛИВАЕМ ВСЕ ФОНОВЫЕ ПОТОКИ
+    # ✅ ШАГ 1: ОСТАНАВЛИВАЕМ ПОТОКИ
     log("🛑 Останавливаем фоновые потоки...")
     monitoring_active = False
-    watch_active = False  # 🔥 КРИТИЧНО!
+    watch_active = False
     shutdown_event.set()
-
-    time.sleep(1.5)  # Даём потокам завершиться
+    time.sleep(1.5)
     log("✅ Потоки остановлены")
 
-    # ✅ ШАГ 2: Записываем EXIT
+    # ✅ ШАГ 2: РАЗБЛОКИРУЕМ САЙТЫ (ДО УДАЛЕНИЯ CONFIG!)
+    try:
+        sites = load_blocked_sites()
+        if sites:
+            log(f"🧼 Удаляем {len(sites)} сайтов из hosts...")
+
+            # Очищаем список в памяти
+            save_blocked_sites([])
+
+            # Применяем изменения в hosts (с повторами)
+            for attempt in range(3):
+                if apply_hosts_block([]):
+                    log("✅ Все сайты разблокированы")
+                    break
+                else:
+                    log(f"⚠️ Попытка {attempt + 1}/3 не удалась, повторяю...")
+                    time.sleep(0.5)
+            else:
+                log("❌ Не удалось полностью очистить hosts после 3 попыток")
+        else:
+            log("ℹ️ Список заблокированных сайтов пуст")
+    except Exception as e:
+        log(f"⚠️ Ошибка при разблокировке сайтов: {e}")
+
+    # ✅ ШАГ 3: Записываем EXIT
     try:
         create_exit_sentinel()
         save_config(status="EXIT")
@@ -528,7 +727,7 @@ def exit_app():
     except Exception as e:
         log(f"⚠️ Ошибка при записи EXIT: {e}")
 
-    # ✅ ШАГ 3: АГРЕССИВНО УБИВАЕМ SecureSystem
+    # ✅ ШАГ 4: ЗАВЕРШАЕМ SecureSystem
     log("🧨 Завершаем SecureSystem...")
     for attempt in range(5):
         killed = False
@@ -536,36 +735,43 @@ def exit_app():
             try:
                 if proc.info['name'] and proc.info['name'].lower() == "securesystem.exe":
                     try:
-                        proc.kill()  # 💥 Жёсткое завершение
-                        log(f"🛑 SecureSystem PID {proc.info['pid']} завершён (попытка {attempt + 1})")
+                        proc.kill()
+                        log(f"🛑 SecureSystem PID {proc.info['pid']} завершён")
                         killed = True
                     except psutil.AccessDenied:
                         proc.terminate()
                         killed = True
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
-
         if killed:
             time.sleep(0.3)
         else:
             break
 
-    # ✅ ШАГ 4: УДАЛЯЕМ ИЗ АВТОЗАГРУЗКИ
-    log("🧹 Удаляем из автозагрузки...")
-    removed = remove_from_startup_everywhere("SecureSystem", "SecureSystem.exe")
-    log("✅ SecureSystem удалён из автозагрузки" if removed else "ℹ️ Записи не найдены")
+    time.sleep(0.5)
 
-    # ✅ ШАГ 5: УДАЛЯЕМ CONFIG
     try:
         if os.path.exists(CONFIG_PATH):
             os.chmod(CONFIG_PATH, 0o666)
             os.remove(CONFIG_PATH)
-            log("🗑️ config.json удалён")
-    except Exception as e:
-        log(f"⚠️ Ошибка удаления config.json: {e}")
+            log("🧹 config.json удалён после завершения SecureSystem")
 
-    # ✅ ШАГ 6: ЗАКРЫВАЕМ ПРИЛОЖЕНИЕ
-    log("👋 Завершение работы через 1 сек...")
+        sentinel_path = os.path.join(base_dir(), "config.exit.lock")
+        if os.path.exists(sentinel_path):
+            os.chmod(sentinel_path, 0o666)
+            os.remove(sentinel_path)
+            log("🧹 config.exit.lock удалён")
+    except Exception as e:
+        log(f"⚠️ Ошибка при удалении файлов: {e}")
+
+
+    # ✅ ШАГ 5: УДАЛЯЕМ ИЗ АВТОЗАГРУЗКИ
+    log("🧹 Удаляем из автозагрузки...")
+    removed = remove_from_startup_everywhere("SecureSystem", "SecureSystem.exe")
+    log("✅ Автозагрузка очищена" if removed else "ℹ️ Записи не найдены")
+
+    # ✅ ШАГ 7: ЗАКРЫВАЕМ ПРИЛОЖЕНИЕ
+    log("👋 Завершение работы...")
     root.after(1000, root.destroy)
 
 def custom_password_dialog(title, message):
@@ -628,12 +834,15 @@ def refresh_process_list():
     log("🔄 Список процессов обновлён.")
 
 def show_frame(frame):
+    """Переключение между разделами интерфейса"""
     # Скрываем все фреймы
     button_start.pack_forget()
     frame_logs.pack_forget()
     about_frame.pack_forget()
     settings_frame.pack_forget()
+    sites_frame.pack_forget()  # ✅ Добавлено!
 
+    # Показываем нужный фрейм
     if frame == "monitor":
         button_start.pack(side="left", fill="both", expand=True, padx=20, pady=20)
         frame_logs.pack(side="right", fill="y")
@@ -641,6 +850,9 @@ def show_frame(frame):
         about_frame.pack(side="left", fill="both", expand=True, padx=20, pady=20)
     elif frame == "settings":
         settings_frame.pack(side="left", fill="both", expand=True, padx=20, pady=20)
+    elif frame == "sites":
+        sites_frame.pack(side="left", fill="both", expand=True, padx=20, pady=20)
+        refresh_sites_list()  # ✅ Обновляем список сайтов при открытии
 
 # ----------------- Интерфейс -----------------
 root = ctk.CTk()
@@ -676,8 +888,10 @@ process_box = ctk.CTkTextbox(button_start, height=300, width=400)
 process_box.pack(pady=10, fill="both", expand=True)
 process_box.configure(state="disabled", cursor="arrow")  # ⛔ запрещаем редактировать
 
+# Левая панель навигации (добавь после создания nav_frame)
 ctk.CTkLabel(nav_frame, text="Меню", font=("Arial", 20, "bold")).pack(pady=20)
 ctk.CTkButton(nav_frame, text="Мониторинг", width=160, command=lambda: show_frame("monitor")).pack(pady=10)
+ctk.CTkButton(nav_frame, text="🌐 Сайты", width=160, command=lambda: show_frame("sites")).pack(pady=10)  # ✅
 ctk.CTkButton(nav_frame, text="Настройки", width=160, command=lambda: show_frame("settings")).pack(pady=10)
 ctk.CTkButton(nav_frame, text="О программе", width=160, command=lambda: show_frame("about")).pack(pady=10)
 
@@ -721,7 +935,7 @@ about_text.insert("end", "\n\n📝 Описание:\n🧱 App Blocker — си�
                           "• Контроля рабочего времени сотрудников в офисе.\n"
                           "• Ограничения доступа к развлекательным программам в школах.\n"
                           "• Установки ограничений на личных ПК.\n\n"
-                          "⚡ Новые функции (2.0.0):\n"
+                          "⚡ Новые функции 2.1.0 (releas):\n"
                           "🔐 Пароль на выход — закрыть App Blocker можно только по паролю.\n"
                           "🛡 SecureSystem.exe — защита от завершения.\n"
                           "♻️ Автовосстановление — процессы AppBlocker и SecureSystem поднимают друг друга.\n"
@@ -748,6 +962,66 @@ about_text.insert("end", "\n\n📝 Описание:\n🧱 App Blocker — си�
                           "✨ Раздел 'О программе' обновляется с новыми версиями! \n\n"
                           "программа бесплатная, поддержите автора:\n4441 1111 5818 7579 (mono)\n4314 1402 1489 7073 (ПУМБ) \n5168 7521 2074 2567 (ПРИВАТ)")
 about_text.configure(state="disabled")
+
+# ================== БЛОКИРОВКА САЙТОВ ==================
+sites_frame = ctk.CTkFrame(root, fg_color="transparent")
+sites_frame.pack_forget()
+
+ctk.CTkLabel(sites_frame, text="Блокировка сайтов 🌐", font=("Arial", 22, "bold")).pack(pady=20)
+
+sites_listbox = ctk.CTkTextbox(sites_frame, width=500, height=300)
+sites_listbox.pack(pady=10)
+sites_listbox.configure(state="disabled")
+
+site_entry = ctk.CTkEntry(sites_frame, width=300, placeholder_text="Например: youtube.com")
+site_entry.pack(pady=5)
+
+def refresh_sites_list():
+    sites = load_blocked_sites()
+    sites_listbox.configure(state="normal")
+    sites_listbox.delete("0.0", "end")
+    for s in sites:
+        sites_listbox.insert("end", f"{s}\n")
+    sites_listbox.configure(state="disabled")
+
+def add_site():
+    site = site_entry.get().strip().lower()
+    if not site:
+        log("⚠️ Введи сайт!")
+        return
+    sites = load_blocked_sites()
+    if site not in sites:
+        sites.append(site)
+        save_blocked_sites(sites)
+        apply_hosts_block(sites)
+        refresh_sites_list()
+        log(f"✅ Сайт {site} добавлен в блок.")
+    else:
+        log(f"ℹ️ {site} уже заблокирован.")
+
+def remove_site():
+    site = site_entry.get().strip().lower()
+    if not site:
+        log("⚠️ Введи сайт для удаления!")
+        return
+    sites = load_blocked_sites()
+    if site in sites:
+        sites.remove(site)
+        save_blocked_sites(sites)
+        apply_hosts_block(sites)
+        refresh_sites_list()
+        log(f"🗑️ Сайт {site} удалён из блока.")
+    else:
+        log(f"ℹ️ {site} не найден в списке блокировок.")
+
+btn_frame = ctk.CTkFrame(sites_frame, fg_color="transparent")
+btn_frame.pack(pady=10)
+
+add_btn = ctk.CTkButton(btn_frame, text="➕ Добавить", width=120, command=add_site)
+add_btn.pack(side="left", padx=5)
+
+remove_btn = ctk.CTkButton(btn_frame, text="❌ Удалить", width=120, command=remove_site)
+remove_btn.pack(side="left", padx=5)
 
 # ================== НАСТРОЙКИ ==================
 settings_frame = ctk.CTkFrame(root, fg_color="transparent")
@@ -854,6 +1128,7 @@ if PERMANENT_LOCK:
     secure_switch.configure(state="disabled")
     timer_switch.configure(state="disabled")
     timer_entry.configure(state="disabled")
+    remove_btn.configure(state="disabled")
     for widget in timer_frame.winfo_children():
         widget.configure(state="disabled")
     log("🔐 Перманентная блокировка активна — переключатели навсегда заблокированы.")
@@ -901,13 +1176,17 @@ if not ADMIN_PASSWORD:
         root.destroy()
         sys.exit(0)
 
-    save_config()
+    # ✅ СОХРАНЯЕМ ПАРОЛЬ И ПРИНУДИТЕЛЬНО СБРАСЫВАЕМ ФЛАГИ
+    save_config(status="RUNNING")  # ← Явно указываем статус!
 
-root.after(100, lambda: (
-    root.deiconify(),
-    root.lift(),
-    root.focus_force(),
-))
+    # ✅ СБРОС ФЛАГОВ, ЧТОБЫ НЕ СРАБОТАЛ exit_app_no_password()
+    APP_CLOSING = False
+
+    root.after(100, lambda: (
+        root.deiconify(),
+        root.lift(),
+        root.focus_force(),
+    ))
 
 if ensure_secure_system():
     log("🛡 Система защиты от завершения запущенна")

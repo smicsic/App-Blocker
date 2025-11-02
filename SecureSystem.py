@@ -83,28 +83,50 @@ def restart_appblocker():
         print(f"[SecureSystem] ❌ Ошибка перезапуска: {e}")
 
 def cleanup_files():
-    """🧹 Удаляет sentinel и config"""
-    time.sleep(0.5)    # чуть-чуть подождать, чтобы дескрипторы освободились
+    """🧹 Удаляет sentinel и config, но только если статус = EXIT"""
+    print("[SecureSystem] 🧹 Запуск очистки...")
+    time.sleep(1.0)  # 🕐 даём AppBlocker время закрыться
 
-    try:
-        if os.path.exists(config_path()):
-            os.chmod(config_path(), 0o666)
-            os.remove(config_path())
-            print("[SecureSystem] 🧹 config.json удалён")
-    except Exception as e:
-        print(f"[SecureSystem] ⚠️ Ошибка при удалении config.json: {e}")
+    # --- Удаление config.json ---
+    for attempt in range(5):
+        try:
+            if os.path.exists(config_path()):
+                with open(config_path(), "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    status = data.get("status", "RUNNING")
 
+                if status == "EXIT":
+                    os.chmod(config_path(), 0o666)
+                    os.remove(config_path())
+                    print(f"[SecureSystem] ✅ config.json удалён (попытка {attempt+1})")
+                    break
+                else:
+                    print(f"[SecureSystem] ⏩ config.json сохранён (status={status})")
+                    break
+            else:
+                print("[SecureSystem] ℹ️ config.json не найден")
+                break
+        except PermissionError:
+            print(f"[SecureSystem] 🔒 config.json занят (попытка {attempt+1}), жду 1 сек...")
+            time.sleep(1)
+        except Exception as e:
+            print(f"[SecureSystem] ⚠️ Ошибка при удалении config.json: {e}")
+            break
+    else:
+        print("[SecureSystem] ❌ Не удалось удалить config.json после 5 попыток")
+
+    # --- Удаление sentinel ---
     try:
         if os.path.exists(sentinel_path()):
             os.chmod(sentinel_path(), 0o666)
             os.remove(sentinel_path())
-            print("[SecureSystem] 🧹 config.exit.lock удалён")
+            print("[SecureSystem] ✅ config.exit.lock удалён")
     except Exception as e:
         print(f"[SecureSystem] ⚠️ Ошибка при удалении sentinel: {e}")
 
 def main():
     print(f"[SecureSystem] 🔐 Запуск. Папка: {base_dir()}")
-    add_to_startup()  # 🧠 Автозагрузка
+    add_to_startup()
     print("[SecureSystem] 🛡️ Мониторинг AppBlocker активирован")
 
     if not is_appblocker_running():
@@ -113,9 +135,13 @@ def main():
 
     while True:
         try:
-            # 📌 Если получен EXIT или найден sentinel-файл
-            if get_status() == "EXIT" or is_exit_flag_set():
-                print("[SecureSystem] 🛑 Получен EXIT / Sentinel. Завершение…")
+            status = get_status()
+
+            # 🔥 теперь SecureSystem реагирует только на статус EXIT
+            if status == "EXIT" or is_exit_flag_set():
+                print(f"[SecureSystem] 🛑 Получен сигнал завершения (status={status})")
+                cleanup_files()
+                print("[SecureSystem] ✅ Завершено корректно")
                 break
 
             if not is_appblocker_running():
@@ -130,10 +156,6 @@ def main():
         except Exception as e:
             print(f"[SecureSystem] ❌ Ошибка цикла: {e}")
             time.sleep(CHECK_INTERVAL)
-
-    cleanup_files()
-
-    print("[SecureSystem] ✅ Завершено")
 
 if __name__ == "__main__":
     main()
