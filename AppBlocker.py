@@ -7,6 +7,7 @@ import subprocess
 import json
 import pyfiglet
 import datetime
+import math
 import winreg
 import ctypes
 import requests
@@ -35,6 +36,117 @@ shutdown_event = Event()
 watch_active = False
 HOSTS_PATH = r"C:\Windows\System32\drivers\etc\hosts"
 BLOCK_MARKER = "# AppBlocker managed"
+TRIAL_PERIOD_DAYS = 7
+VALID_LICENSE_KEYS = {
+    "ABLKR-0E2P-26GM-K2E1",
+    "ABLKR-0GG9-44VV-H4H5",
+    "ABLKR-0T90-J1TW-FP2X",
+    "ABLKR-13VY-KV01-J2J7",
+    "ABLKR-1CTV-JKYF-EFMO",
+    "ABLKR-1JA6-JYX3-C90O",
+    "ABLKR-210B-5UQF-WEHW",
+    "ABLKR-2MH5-ZQNC-NJGM",
+    "ABLKR-2NDY-COFL-XDLO",
+    "ABLKR-38QR-OBHG-L0PN",
+    "ABLKR-3FVC-8RIP-4WSW",
+    "ABLKR-3YX8-JG5J-Z175",
+    "ABLKR-40J5-FJW0-C3Y3",
+    "ABLKR-40N4-56U5-D2TJ",
+    "ABLKR-548U-FQIZ-MUSY",
+    "ABLKR-5DNB-W4ZA-7EFZ",
+    "ABLKR-5GB7-W53T-AO9K",
+    "ABLKR-5Q4N-VRCC-DKWA",
+    "ABLKR-5QB7-NOF6-706T",
+    "ABLKR-5WFU-H5VM-PBRH",
+    "ABLKR-6EIN-5NPI-OYWI",
+    "ABLKR-759A-C5UT-3D0M",
+    "ABLKR-76CF-7E1N-S804",
+    "ABLKR-7DY0-A0U2-NXS4",
+    "ABLKR-7I7N-8G08-ZRS2",
+    "ABLKR-7MCZ-2XM3-WECC",
+    "ABLKR-8SOP-E7TU-OX4S",
+    "ABLKR-9AFZ-A5VP-UEMO",
+    "ABLKR-9FIA-Z0UA-NAA7",
+    "ABLKR-9GW1-UN94-27QD",
+    "ABLKR-A23A-NTHT-8J14",
+    "ABLKR-AOUE-DW1I-N21J",
+    "ABLKR-AXCH-ARSO-JSMG",
+    "ABLKR-BHMH-ZFXH-CBML",
+    "ABLKR-BW8D-JWB5-DBPC",
+    "ABLKR-BWWL-AOXE-JNAN",
+    "ABLKR-BX7K-MW5B-PPRL",
+    "ABLKR-CF8Z-7R7P-N0R2",
+    "ABLKR-CH0Y-KA6I-6JFV",
+    "ABLKR-CNQ9-UXC5-31X8",
+    "ABLKR-CQVY-BC5F-WSJ3",
+    "ABLKR-D053-2HFF-PGJ0",
+    "ABLKR-DG4J-BCIU-G9WM",
+    "ABLKR-DJWX-SSU5-Z1KA",
+    "ABLKR-DNCU-PV2O-QWKT",
+    "ABLKR-DYAG-Z97S-25N1",
+    "ABLKR-F5O8-ZRBH-RCAQ",
+    "ABLKR-FG8T-KYJI-OU6P",
+    "ABLKR-FLGR-H9J2-ZL01",
+    "ABLKR-FXOQ-K1MW-HEB7",
+    "ABLKR-GFUU-83UQ-B7CM",
+    "ABLKR-GMHM-TRLG-4ZFB",
+    "ABLKR-H4ND-B81G-QEOE",
+    "ABLKR-H4PD-TL7E-TZVT",
+    "ABLKR-HASX-BOJL-3H4W",
+    "ABLKR-HJ11-FG0E-G0JB",
+    "ABLKR-ICTA-2VKJ-3X6Y",
+    "ABLKR-ISIG-Q8JT-GEV4",
+    "ABLKR-ITY0-FAMV-KPO2",
+    "ABLKR-JC2I-VA4Q-ME91",
+    "ABLKR-JQJY-S4EF-7CEO",
+    "ABLKR-KIA9-6UXB-IZJL",
+    "ABLKR-LA40-6TWY-QJ9A",
+    "ABLKR-LNYS-AIJR-VVXF",
+    "ABLKR-LP3V-7JW3-F4NS",
+    "ABLKR-N2E1-9ZCL-P5OI",
+    "ABLKR-OXKV-1DGJ-OC8E",
+    "ABLKR-P6WK-ZVR5-ZAT7",
+    "ABLKR-PJ82-FFU6-5GT9",
+    "ABLKR-PLPB-K9KF-1G3J",
+    "ABLKR-PLSX-0CIB-ZEEI",
+    "ABLKR-PSLM-LCQ4-EFIJ",
+    "ABLKR-Q4WP-CT9E-A352",
+    "ABLKR-QIBN-XV4S-S9UL",
+    "ABLKR-QT8V-H7PK-E0SS",
+    "ABLKR-R2HQ-I7WH-JRBC",
+    "ABLKR-RL7K-EKH6-8Y1R",
+    "ABLKR-RWU1-G9S8-MS26",
+    "ABLKR-S94C-89QC-3ZHZ",
+    "ABLKR-SA86-1DHY-RHWO",
+    "ABLKR-SAIE-1OZ9-O3MV",
+    "ABLKR-SH9V-8N9S-2FYU",
+    "ABLKR-T0YY-DKIP-SVDC",
+    "ABLKR-TF6S-W03D-7913",
+    "ABLKR-TSA1-RQ87-9UVM",
+    "ABLKR-TW1L-D63C-GZMQ",
+    "ABLKR-U55M-8OAV-UUC7",
+    "ABLKR-UINL-2WY1-5YOM",
+    "ABLKR-VCCR-KJSX-Z9IS",
+    "ABLKR-W4KN-DKKV-7QH2",
+    "ABLKR-W5DB-RCQS-N77V",
+    "ABLKR-WTLV-0YA0-Q883",
+    "ABLKR-XFN7-WMMQ-TT7Y",
+    "ABLKR-XIKH-HYZ3-I9TW",
+    "ABLKR-Y0CQ-65ZT-4WN6",
+    "ABLKR-Y0CZ-0CK2-EQK2",
+    "ABLKR-Y5HD-3VHS-IYSH",
+    "ABLKR-YOBA-LT6Q-VE5Q",
+    "ABLKR-YQNH-VP8W-KJVA",
+    "ABLKR-Z7Z2-GQWS-MFCE",
+}
+
+LICENSE_KEY = ""
+LICENSE_VALID = False
+TRIAL_START = None
+LICENSE_STATUS_TEXT = ""
+license_status_var = None
+license_activate_button = None
+
 EXIT_LOCK = Lock()
 
 def is_admin():
@@ -298,6 +410,149 @@ def load_blocked_sites():
             data = json.load(f)
         return data.get("blocked_sites", [])
     return []
+
+def load_full_config():
+    if os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"⚠️ Ошибка чтения config.json: {e}")
+    return {}
+
+
+def save_full_config(data):
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+def set_license_status_text(text: str):
+    global LICENSE_STATUS_TEXT, license_status_var, license_activate_button
+    LICENSE_STATUS_TEXT = text
+    if license_status_var is not None:
+        try:
+            license_status_var.set(text)
+        except Exception:
+            pass
+    if license_activate_button is not None:
+        try:
+            state = "disabled" if LICENSE_VALID else "normal"
+            license_activate_button.configure(state=state)
+        except Exception:
+            pass
+
+
+def trial_days_left():
+    if not TRIAL_START:
+        return TRIAL_PERIOD_DAYS
+    remaining = datetime.timedelta(days=TRIAL_PERIOD_DAYS) - (datetime.datetime.now() - TRIAL_START)
+    if remaining.total_seconds() <= 0:
+        return 0
+    return max(0, math.ceil(remaining.total_seconds() / 86400))
+
+
+def prompt_license_activation(manual: bool = False) -> bool:
+    global LICENSE_KEY, LICENSE_VALID, TRIAL_START
+
+    config = load_full_config()
+
+    while True:
+        key = simpledialog.askstring(
+            "Активация",
+            "Введите ключ доступа:",
+            parent=root if 'root' in globals() else None,
+        )
+
+        if key is None:
+            if not manual:
+                messagebox.showerror("Активация отменена", "Без ключа приложение будет закрыто.")
+            break
+
+        key = key.strip().upper()
+
+        if not key:
+            messagebox.showerror("Ошибка", "Ключ не может быть пустым.")
+            continue
+
+        if key in VALID_LICENSE_KEYS:
+            LICENSE_KEY = key
+            LICENSE_VALID = True
+            config["license_key"] = key
+            config["license_activated_at"] = datetime.datetime.now().isoformat()
+            if TRIAL_START:
+                config["trial_start"] = TRIAL_START.isoformat()
+            save_full_config(config)
+            set_license_status_text("🔑 Приложение активировано ключом.")
+            messagebox.showinfo("Успех", "Лицензия успешно активирована!")
+            return True
+
+        messagebox.showerror("Неверный ключ", "Ключ не найден. Проверьте и попробуйте снова.")
+
+    LICENSE_KEY = ""
+    LICENSE_VALID = False
+    return False
+
+
+def ensure_license_valid() -> bool:
+    global LICENSE_KEY, LICENSE_VALID, TRIAL_START
+
+    config = load_full_config()
+
+    trial_start_raw = config.get("trial_start")
+    if trial_start_raw:
+        try:
+            TRIAL_START = datetime.datetime.fromisoformat(trial_start_raw)
+        except ValueError:
+            TRIAL_START = None
+
+    if TRIAL_START is None:
+        TRIAL_START = datetime.datetime.now()
+        config["trial_start"] = TRIAL_START.isoformat()
+        save_full_config(config)
+
+    saved_key = config.get("license_key", "").strip().upper()
+    if saved_key and saved_key in VALID_LICENSE_KEYS:
+        LICENSE_KEY = saved_key
+        LICENSE_VALID = True
+        set_license_status_text("🔑 Приложение активировано ключом.")
+        return True
+
+    LICENSE_KEY = ""
+    LICENSE_VALID = False
+
+    if saved_key and saved_key not in VALID_LICENSE_KEYS:
+        messagebox.showerror("Ошибка ключа", "Сохранённый ключ недействителен. Введите корректный ключ.")
+        config.pop("license_key", None)
+        save_full_config(config)
+
+    now = datetime.datetime.now()
+    if now - TRIAL_START >= datetime.timedelta(days=TRIAL_PERIOD_DAYS):
+        set_license_status_text("❌ Пробный период истёк.")
+        messagebox.showerror(
+            "Пробный период истёк",
+            "Пробный период на 7 дней закончился. Купите ключ в tg: @app_blocker_sell_bot чтобы продолжить использование.",
+        )
+        if prompt_license_activation():
+            return True
+        return False
+
+    days_left = trial_days_left()
+    set_license_status_text(f"🆓 Пробный период: осталось {days_left} дн.")
+    return True
+
+
+def request_manual_activation():
+    if prompt_license_activation(manual=True):
+        try:
+            log("🔑 Лицензия активирована по ключу.")
+        except Exception:
+            pass
+    else:
+        if TRIAL_START and datetime.datetime.now() - TRIAL_START >= datetime.timedelta(days=TRIAL_PERIOD_DAYS):
+            set_license_status_text("❌ Пробный период истёк.")
+        else:
+            days_left = trial_days_left()
+            set_license_status_text(f"🆓 Пробный период: осталось {days_left} дн.")
 
 def save_blocked_sites(sites):
     """Сохраняет список сайтов в config.json"""
@@ -1120,6 +1375,21 @@ secure_description = ctk.CTkLabel(
 )
 secure_description.pack(pady=(0, 10))
 
+license_status_var = ctk.StringVar(value=LICENSE_STATUS_TEXT)
+license_status_label = ctk.CTkLabel(
+    settings_frame,
+    textvariable=license_status_var,
+    font=("Arial", 12)
+)
+license_status_label.pack(pady=(10, 5))
+
+license_activate_button = ctk.CTkButton(
+    settings_frame,
+    text="🔑 Активировать по ключу",
+    command=request_manual_activation
+)
+license_activate_button.pack(pady=(0, 10))
+
 # Перехват крестика
 root.protocol("WM_DELETE_WINDOW", on_close)
 
@@ -1129,6 +1399,10 @@ refresh_process_list()
 
 # ----------------- АВТО ЗАПУСК -----------------
 load_config()
+
+if not ensure_license_valid():
+    root.destroy()
+    sys.exit(0)
 
 if PERMANENT_LOCK:
     secure_switch.configure(state="disabled")
