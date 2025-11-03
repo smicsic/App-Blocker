@@ -9,10 +9,12 @@ import pyfiglet
 import datetime
 import winreg
 import ctypes
+import requests
+import tempfile
+import shutil
 import customtkinter as ctk
 from tkinter import simpledialog, messagebox
 from threading import Lock, Event
-
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
@@ -782,12 +784,15 @@ def custom_password_dialog(title, message):
     dialog.resizable(False, False)
     dialog.grab_set()  # блокирует основное окно
     dialog.transient(root)  # поверх главного окна
+    dialog.iconbitmap(os.path.join(base_dir(), "icon.ico"))
 
     # Центрирование
     dialog.update_idletasks()
     x = (dialog.winfo_screenwidth() - dialog.winfo_reqwidth()) // 2
     y = (dialog.winfo_screenheight() - dialog.winfo_reqheight()) // 2
     dialog.geometry(f"+{x}+{y}")
+
+    dialog.iconbitmap(os.path.join(base_dir(), "icon.ico"))
 
     # Текст
     label = ctk.CTkLabel(dialog, text=message, font=("Arial", 14))
@@ -858,6 +863,7 @@ def show_frame(frame):
 root = ctk.CTk()
 root.title("App Blocker")
 root.geometry("900x700")
+root.iconbitmap(os.path.join(base_dir(), "icon.ico"))
 root.resizable(True, True)
 
 # Верхний фрейм с вводом и кнопками
@@ -935,7 +941,7 @@ about_text.insert("end", "\n\n📝 Описание:\n🧱 App Blocker — си�
                           "• Контроля рабочего времени сотрудников в офисе.\n"
                           "• Ограничения доступа к развлекательным программам в школах.\n"
                           "• Установки ограничений на личных ПК.\n\n"
-                          "⚡ Новые функции 2.1.0 (releas):\n"
+                          "⚡ Новые функции 2.2.0 (releas):\n"
                           "🔐 Пароль на выход — закрыть App Blocker можно только по паролю.\n"
                           "🛡 SecureSystem.exe — защита от завершения.\n"
                           "♻️ Автовосстановление — процессы AppBlocker и SecureSystem поднимают друг друга.\n"
