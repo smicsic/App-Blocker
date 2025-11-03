@@ -149,6 +149,67 @@ license_activate_button = None
 
 EXIT_LOCK = Lock()
 
+def base_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+# === ЛИЦЕНЗИЯ И ПРОБНЫЙ ПЕРИОД ===
+LICENSE_FILE = os.path.join(base_dir(), "license.dat")
+TRIAL_LIMIT_DAYS = 7
+
+def check_license_or_trial():
+    """Проверяет лицензию или оставшееся время триала. Блокирует запуск, если истек срок."""
+    global LICENSE_VALID, LICENSE_KEY
+
+    # Если файл существует
+    if os.path.exists(LICENSE_FILE):
+        try:
+            with open(LICENSE_FILE, "r", encoding="utf-8") as f:
+                content = f.read().strip()
+        except Exception as e:
+            messagebox.showerror("Ошибка лицензии", f"Не удалось прочитать файл лицензии: {e}")
+            sys.exit(0)
+
+        # Если в файле ключ — сразу активируем
+        if content in VALID_LICENSE_KEYS:
+            LICENSE_KEY = content
+            LICENSE_VALID = True
+            print("🔑 Найден действительный лицензионный ключ — полная версия активирована.")
+            return
+
+        # Если в файле дата — проверяем время
+        try:
+            last_login = datetime.datetime.fromisoformat(content)
+        except Exception:
+            # если повреждён файл — сбрасываем
+            with open(LICENSE_FILE, "w", encoding="utf-8") as f:
+                f.write(datetime.datetime.now().isoformat())
+            return
+
+        now = datetime.datetime.now()
+        delta = (now - last_login).days
+
+        if delta > TRIAL_LIMIT_DAYS:
+            messagebox.showerror(
+                "Пробный период истёк",
+                "❌ Пробная версия истекла. Купите лицензию в @app_blocker_sell_bot"
+            )
+            sys.exit(0)  # Полностью блокируем
+        else:
+            print(f"🆓 Пробная версия активна. Осталось {TRIAL_LIMIT_DAYS - delta} дн.")
+            # Обновляем дату последнего входа
+            with open(LICENSE_FILE, "w", encoding="utf-8") as f:
+                f.write(now.isoformat())
+            return
+    else:
+        # если файл отсутствует — создаём новый с сегодняшней датой
+        with open(LICENSE_FILE, "w", encoding="utf-8") as f:
+            f.write(datetime.datetime.now().isoformat())
+        print("🆕 Начат пробный период (7 дн.)")
+
+check_license_or_trial()
+
 def is_admin():
     """Проверяет, запущено ли приложение с правами администратора"""
     try:
@@ -451,28 +512,84 @@ def trial_days_left():
     return max(0, math.ceil(remaining.total_seconds() / 86400))
 
 
+def trial_expired() -> bool:
+    if not TRIAL_START:
+        return False
+    return datetime.datetime.now() - TRIAL_START >= datetime.timedelta(days=TRIAL_PERIOD_DAYS)
+
+
+def enforce_license_for_admin_dialog() -> bool:
+    """Показывает запрос лицензии перед вводом админ-пароля."""
+    if LICENSE_VALID:
+        return True
+
+    if trial_expired():
+        set_license_status_text("❌ Пробный период истёк.")
+        messagebox.showerror(
+            "Пробный период истёк",
+            "Пробный период на 7 дней закончился. Купите ключ в tg: @app_blocker_sell_bot чтобы продолжить использование.",
+        )
+        return False
+
+    # напоминание об активации
+    prompt_license_activation(manual=True)
+
+    if LICENSE_VALID:
+        return True
+
+    if trial_expired():
+        set_license_status_text("❌ Пробный период истёк.")
+        messagebox.showerror(
+            "Пробный период истёк",
+            "Пробный период на 7 дней закончился. Купите ключ в tg: @app_blocker_sell_bot чтобы продолжить использование.",
+        )
+        return False
+
+    days_left = trial_days_left()
+    set_license_status_text(f"🆓 Пробный период: осталось {days_left} дн.")
+    return True
+
+
 def prompt_license_activation(manual: bool = False) -> bool:
+    """Современное окно активации лицензии (CustomTkinter GUI)."""
     global LICENSE_KEY, LICENSE_VALID, TRIAL_START
 
     config = load_full_config()
 
-    while True:
-        key = simpledialog.askstring(
-            "Активация",
-            "Введите ключ доступа:",
-            parent=root if 'root' in globals() else None,
-        )
+    dialog = ctk.CTkToplevel(root)
+    dialog.title("Активация лицензии")
+    dialog.geometry("480x260")
+    dialog.resizable(False, False)
+    dialog.grab_set()
+    dialog.transient(root)
+    dialog.iconbitmap(os.path.join(base_dir(), "icon.ico"))
 
-        if key is None:
-            if not manual:
-                messagebox.showerror("Активация отменена", "Без ключа приложение будет закрыто.")
-            break
+    # Центрирование
+    dialog.update_idletasks()
+    x = (dialog.winfo_screenwidth() - dialog.winfo_reqwidth()) // 2
+    y = (dialog.winfo_screenheight() - dialog.winfo_reqheight()) // 2
+    dialog.geometry(f"+{x}+{y}")
 
-        key = key.strip().upper()
+    ctk.CTkLabel(
+        dialog,
+        text="🔑 Введите лицензионный ключ",
+        font=("Arial", 18, "bold")
+    ).pack(pady=(25, 10))
 
+    entry = ctk.CTkEntry(dialog, width=300, placeholder_text="ABLKR-XXXX-XXXX-XXXX")
+    entry.pack(pady=10)
+    entry.focus_set()
+
+    status_label = ctk.CTkLabel(dialog, text="", text_color="gray")
+    status_label.pack(pady=(5, 10))
+
+    result = {"success": False}
+
+    def activate():
+        key = entry.get().strip().upper()
         if not key:
-            messagebox.showerror("Ошибка", "Ключ не может быть пустым.")
-            continue
+            status_label.configure(text="⚠️ Ключ не может быть пустым.", text_color="orange")
+            return
 
         if key in VALID_LICENSE_KEYS:
             LICENSE_KEY = key
@@ -484,13 +601,26 @@ def prompt_license_activation(manual: bool = False) -> bool:
             save_full_config(config)
             set_license_status_text("🔑 Приложение активировано ключом.")
             messagebox.showinfo("Успех", "Лицензия успешно активирована!")
-            return True
+            result["success"] = True
+            dialog.destroy()
+        else:
+            status_label.configure(text="❌ Ключ недействителен. Проверьте и попробуйте снова.", text_color="red")
 
-        messagebox.showerror("Неверный ключ", "Ключ не найден. Проверьте и попробуйте снова.")
+    def cancel():
+        result["success"] = False
+        dialog.destroy()
 
-    LICENSE_KEY = ""
-    LICENSE_VALID = False
-    return False
+    btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+    btn_frame.pack(pady=20)
+
+    ctk.CTkButton(btn_frame, text="✅ Активировать", width=150, command=activate).pack(side="left", padx=10)
+    ctk.CTkButton(btn_frame, text="❌ Отмена", width=150, fg_color="#d62828", hover_color="#a71e1e", command=cancel).pack(side="left", padx=10)
+
+    entry.bind("<Return>", lambda e: activate())
+    entry.bind("<Escape>", lambda e: cancel())
+
+    dialog.wait_window()
+    return result["success"]
 
 
 def ensure_license_valid() -> bool:
@@ -927,6 +1057,11 @@ def ensure_secure_system():
 
 def exit_app():
     global monitoring_active, watch_active, APP_CLOSING
+
+    if not enforce_license_for_admin_dialog():
+        log("🚫 Закрытие недоступно без активации лицензии.")
+        root.after(100, root.destroy)
+        return
 
     password_input = custom_password_dialog(
         "Выход",
@@ -1404,6 +1539,17 @@ if not ensure_license_valid():
     root.destroy()
     sys.exit(0)
 
+# 🧾 Отображаем статус лицензии в логах
+if LICENSE_VALID:
+    log("🔑 Лицензия активирована — полный доступ.")
+else:
+    days_left = trial_days_left()
+    if days_left <= 1:
+        log(f"⚠️ Пробный период истекает! Остался {days_left} день.")
+    else:
+        log(f"🆓 Пробная версия активна. Осталось {days_left} дн.")
+
+
 if PERMANENT_LOCK:
     secure_switch.configure(state="disabled")
     timer_switch.configure(state="disabled")
@@ -1440,11 +1586,16 @@ if TIMER_ENABLED:
     for widget in timer_frame.winfo_children():
         widget.configure(state="disabled")
     log("🔒 Переключатель таймера и поля ввода заблокированы (автозагрузка)")
+need_restore_window = False
 
 if not ADMIN_PASSWORD:
     # показываем диалог до входа в mainloop — но НЕ скрываем окно полностью
     # Вместо withdraw — минимизируем
     root.iconify()
+
+    if not enforce_license_for_admin_dialog():
+        root.destroy()
+        sys.exit(0)
 
     ADMIN_PASSWORD = custom_password_dialog(
         "Пароль администратора",
@@ -1458,10 +1609,40 @@ if not ADMIN_PASSWORD:
 
     # ✅ СОХРАНЯЕМ ПАРОЛЬ И ПРИНУДИТЕЛЬНО СБРАСЫВАЕМ ФЛАГИ
     save_config(status="RUNNING")  # ← Явно указываем статус!
+    APP_CLOSING = False
+    need_restore_window = True
+else:
+    root.iconify()
+
+    if not enforce_license_for_admin_dialog():
+        root.destroy()
+        sys.exit(0)
+
+    authenticated = False
+    for attempt in range(3):
+        prompt = "Введите пароль администратора для входа:"
+        password_input = custom_password_dialog("Пароль администратора", prompt)
+
+        if password_input == ADMIN_PASSWORD:
+            authenticated = True
+            break
+
+        if password_input is None:
+            break
+
+        messagebox.showerror("Ошибка", "Неверный пароль! Попробуйте снова.")
+
+    if not authenticated:
+        messagebox.showerror("Ошибка", "Доступ заблокирован без правильного пароля.")
+        root.destroy()
+        sys.exit(0)
 
     # ✅ СБРОС ФЛАГОВ, ЧТОБЫ НЕ СРАБОТАЛ exit_app_no_password()
+    log("🔓 Пароль администратора подтверждён.")
+    save_config(status="RUNNING")
     APP_CLOSING = False
-
+    need_restore_window = True
+if need_restore_window:
     root.after(100, lambda: (
         root.deiconify(),
         root.lift(),
