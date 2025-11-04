@@ -150,12 +150,21 @@ license_activate_button = None
 EXIT_LOCK = Lock()
 
 def base_dir():
+    """Безопасный путь для AppBlocker — хранит всё в AppData, но иконку ищет рядом с exe."""
+    appdata_path = os.path.join(os.getenv("APPDATA"), "AppBlocker")
+    os.makedirs(appdata_path, exist_ok=True)
+
+    # Для иконки и exe возвращаем путь программы
     if getattr(sys, 'frozen', False):
-        return os.path.dirname(os.path.abspath(sys.executable))
-    return os.path.dirname(os.path.abspath(__file__))
+        exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+    else:
+        exe_dir = os.path.dirname(os.path.abspath(__file__))
+
+    return exe_dir
 
 # === ЛИЦЕНЗИЯ И ПРОБНЫЙ ПЕРИОД ===
-LICENSE_FILE = os.path.join(base_dir(), "license.dat")
+LICENSE_FILE = os.path.join(os.getenv("APPDATA"), "AppBlocker", "license.dat")
+os.makedirs(os.path.dirname(LICENSE_FILE), exist_ok=True)
 TRIAL_LIMIT_DAYS = 7
 
 def check_license_or_trial():
@@ -438,11 +447,6 @@ def close_app():
                 log(f"🔴 Приложение '{process_name_full}' (PID: {proc.pid}) завершено.")
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             pass
-
-def base_dir():
-    if getattr(sys, 'frozen', False):
-        return os.path.dirname(os.path.abspath(sys.executable))
-    return os.path.dirname(os.path.abspath(__file__))
 
 APP_DIR = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__))
 CONFIG_PATH = os.path.join(APP_DIR, "config.json")
