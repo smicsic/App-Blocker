@@ -103,10 +103,3 @@ pyinstaller --onefile --noconsole --clean SecureSystem.py
 
 Создан с любовью Вовой ([@smics_play](https://github.com/smicsic))  
 🤖 Помощь: ChatGPT-5  
-💸 Поддержать проект:
-
-```
-mono: 4441 1111 5818 7579
-ПУМБ: 4314 1402 1489 7073
-Приват: 5168 7521 2074 2567
-```
