@@ -1,9 +1,0 @@
-{
-  "process_name": "",
-  "admin_password": "",
-  "status": "RUNNING",
-  "timer_enabled": false,
-  "timer_end": null,
-  "secure_enabled": true,
-  "permanent_lock": false,
-}
