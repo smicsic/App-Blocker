@@ -5,16 +5,11 @@ import threading
 import time
 import subprocess
 import json
-import pyfiglet
 import datetime
-import math
 import winreg
 import ctypes
-import requests
-import tempfile
-import shutil
 import customtkinter as ctk
-from tkinter import simpledialog, messagebox
+from tkinter import messagebox
 from threading import Lock, Event
 
 ctk.set_appearance_mode("dark")
@@ -36,116 +31,6 @@ shutdown_event = Event()
 watch_active = False
 HOSTS_PATH = r"C:\Windows\System32\drivers\etc\hosts"
 BLOCK_MARKER = "# AppBlocker managed"
-TRIAL_PERIOD_DAYS = 7
-VALID_LICENSE_KEYS = {
-    "ABLKR-0E2P-26GM-K2E1",
-    "ABLKR-0GG9-44VV-H4H5",
-    "ABLKR-0T90-J1TW-FP2X",
-    "ABLKR-13VY-KV01-J2J7",
-    "ABLKR-1CTV-JKYF-EFMO",
-    "ABLKR-1JA6-JYX3-C90O",
-    "ABLKR-210B-5UQF-WEHW",
-    "ABLKR-2MH5-ZQNC-NJGM",
-    "ABLKR-2NDY-COFL-XDLO",
-    "ABLKR-38QR-OBHG-L0PN",
-    "ABLKR-3FVC-8RIP-4WSW",
-    "ABLKR-3YX8-JG5J-Z175",
-    "ABLKR-40J5-FJW0-C3Y3",
-    "ABLKR-40N4-56U5-D2TJ",
-    "ABLKR-548U-FQIZ-MUSY",
-    "ABLKR-5DNB-W4ZA-7EFZ",
-    "ABLKR-5GB7-W53T-AO9K",
-    "ABLKR-5Q4N-VRCC-DKWA",
-    "ABLKR-5QB7-NOF6-706T",
-    "ABLKR-5WFU-H5VM-PBRH",
-    "ABLKR-6EIN-5NPI-OYWI",
-    "ABLKR-759A-C5UT-3D0M",
-    "ABLKR-76CF-7E1N-S804",
-    "ABLKR-7DY0-A0U2-NXS4",
-    "ABLKR-7I7N-8G08-ZRS2",
-    "ABLKR-7MCZ-2XM3-WECC",
-    "ABLKR-8SOP-E7TU-OX4S",
-    "ABLKR-9AFZ-A5VP-UEMO",
-    "ABLKR-9FIA-Z0UA-NAA7",
-    "ABLKR-9GW1-UN94-27QD",
-    "ABLKR-A23A-NTHT-8J14",
-    "ABLKR-AOUE-DW1I-N21J",
-    "ABLKR-AXCH-ARSO-JSMG",
-    "ABLKR-BHMH-ZFXH-CBML",
-    "ABLKR-BW8D-JWB5-DBPC",
-    "ABLKR-BWWL-AOXE-JNAN",
-    "ABLKR-BX7K-MW5B-PPRL",
-    "ABLKR-CF8Z-7R7P-N0R2",
-    "ABLKR-CH0Y-KA6I-6JFV",
-    "ABLKR-CNQ9-UXC5-31X8",
-    "ABLKR-CQVY-BC5F-WSJ3",
-    "ABLKR-D053-2HFF-PGJ0",
-    "ABLKR-DG4J-BCIU-G9WM",
-    "ABLKR-DJWX-SSU5-Z1KA",
-    "ABLKR-DNCU-PV2O-QWKT",
-    "ABLKR-DYAG-Z97S-25N1",
-    "ABLKR-F5O8-ZRBH-RCAQ",
-    "ABLKR-FG8T-KYJI-OU6P",
-    "ABLKR-FLGR-H9J2-ZL01",
-    "ABLKR-FXOQ-K1MW-HEB7",
-    "ABLKR-GFUU-83UQ-B7CM",
-    "ABLKR-GMHM-TRLG-4ZFB",
-    "ABLKR-H4ND-B81G-QEOE",
-    "ABLKR-H4PD-TL7E-TZVT",
-    "ABLKR-HASX-BOJL-3H4W",
-    "ABLKR-HJ11-FG0E-G0JB",
-    "ABLKR-ICTA-2VKJ-3X6Y",
-    "ABLKR-ISIG-Q8JT-GEV4",
-    "ABLKR-ITY0-FAMV-KPO2",
-    "ABLKR-JC2I-VA4Q-ME91",
-    "ABLKR-JQJY-S4EF-7CEO",
-    "ABLKR-KIA9-6UXB-IZJL",
-    "ABLKR-LA40-6TWY-QJ9A",
-    "ABLKR-LNYS-AIJR-VVXF",
-    "ABLKR-LP3V-7JW3-F4NS",
-    "ABLKR-N2E1-9ZCL-P5OI",
-    "ABLKR-OXKV-1DGJ-OC8E",
-    "ABLKR-P6WK-ZVR5-ZAT7",
-    "ABLKR-PJ82-FFU6-5GT9",
-    "ABLKR-PLPB-K9KF-1G3J",
-    "ABLKR-PLSX-0CIB-ZEEI",
-    "ABLKR-PSLM-LCQ4-EFIJ",
-    "ABLKR-Q4WP-CT9E-A352",
-    "ABLKR-QIBN-XV4S-S9UL",
-    "ABLKR-QT8V-H7PK-E0SS",
-    "ABLKR-R2HQ-I7WH-JRBC",
-    "ABLKR-RL7K-EKH6-8Y1R",
-    "ABLKR-RWU1-G9S8-MS26",
-    "ABLKR-S94C-89QC-3ZHZ",
-    "ABLKR-SA86-1DHY-RHWO",
-    "ABLKR-SAIE-1OZ9-O3MV",
-    "ABLKR-SH9V-8N9S-2FYU",
-    "ABLKR-T0YY-DKIP-SVDC",
-    "ABLKR-TF6S-W03D-7913",
-    "ABLKR-TSA1-RQ87-9UVM",
-    "ABLKR-TW1L-D63C-GZMQ",
-    "ABLKR-U55M-8OAV-UUC7",
-    "ABLKR-UINL-2WY1-5YOM",
-    "ABLKR-VCCR-KJSX-Z9IS",
-    "ABLKR-W4KN-DKKV-7QH2",
-    "ABLKR-W5DB-RCQS-N77V",
-    "ABLKR-WTLV-0YA0-Q883",
-    "ABLKR-XFN7-WMMQ-TT7Y",
-    "ABLKR-XIKH-HYZ3-I9TW",
-    "ABLKR-Y0CQ-65ZT-4WN6",
-    "ABLKR-Y0CZ-0CK2-EQK2",
-    "ABLKR-Y5HD-3VHS-IYSH",
-    "ABLKR-YOBA-LT6Q-VE5Q",
-    "ABLKR-YQNH-VP8W-KJVA",
-    "ABLKR-Z7Z2-GQWS-MFCE",
-}
-
-LICENSE_KEY = ""
-LICENSE_VALID = False
-TRIAL_START = None
-LICENSE_STATUS_TEXT = ""
-license_status_var = None
-license_activate_button = None
 
 EXIT_LOCK = Lock()
 
@@ -161,63 +46,6 @@ def base_dir():
         exe_dir = os.path.dirname(os.path.abspath(__file__))
 
     return exe_dir
-
-# === ЛИЦЕНЗИЯ И ПРОБНЫЙ ПЕРИОД ===
-LICENSE_FILE = os.path.join(os.getenv("APPDATA"), "AppBlocker", "license.dat")
-os.makedirs(os.path.dirname(LICENSE_FILE), exist_ok=True)
-TRIAL_LIMIT_DAYS = 7
-
-def check_license_or_trial():
-    """Проверяет лицензию или оставшееся время триала. Блокирует запуск, если истек срок."""
-    global LICENSE_VALID, LICENSE_KEY
-
-    # Если файл существует
-    if os.path.exists(LICENSE_FILE):
-        try:
-            with open(LICENSE_FILE, "r", encoding="utf-8") as f:
-                content = f.read().strip()
-        except Exception as e:
-            messagebox.showerror("Ошибка лицензии", f"Не удалось прочитать файл лицензии: {e}")
-            sys.exit(0)
-
-        # Если в файле ключ — сразу активируем
-        if content in VALID_LICENSE_KEYS:
-            LICENSE_KEY = content
-            LICENSE_VALID = True
-            print("🔑 Найден действительный лицензионный ключ — полная версия активирована.")
-            return
-
-        # Если в файле дата — проверяем время
-        try:
-            last_login = datetime.datetime.fromisoformat(content)
-        except Exception:
-            # если повреждён файл — сбрасываем
-            with open(LICENSE_FILE, "w", encoding="utf-8") as f:
-                f.write(datetime.datetime.now().isoformat())
-            return
-
-        now = datetime.datetime.now()
-        delta = (now - last_login).days
-
-        if delta > TRIAL_LIMIT_DAYS:
-            messagebox.showerror(
-                "Пробный период истёк",
-                "❌ Пробная версия истекла. Купите лицензию в @app_blocker_sell_bot"
-            )
-            sys.exit(0)  # Полностью блокируем
-        else:
-            print(f"🆓 Пробная версия активна. Осталось {TRIAL_LIMIT_DAYS - delta} дн.")
-            # Обновляем дату последнего входа
-            with open(LICENSE_FILE, "w", encoding="utf-8") as f:
-                f.write(now.isoformat())
-            return
-    else:
-        # если файл отсутствует — создаём новый с сегодняшней датой
-        with open(LICENSE_FILE, "w", encoding="utf-8") as f:
-            f.write(datetime.datetime.now().isoformat())
-        print("🆕 Начат пробный период (7 дн.)")
-
-check_license_or_trial()
 
 def is_admin():
     """Проверяет, запущено ли приложение с правами администратора"""
@@ -476,218 +304,6 @@ def load_blocked_sites():
         return data.get("blocked_sites", [])
     return []
 
-def load_full_config():
-    if os.path.exists(CONFIG_PATH):
-        try:
-            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"⚠️ Ошибка чтения config.json: {e}")
-    return {}
-
-
-def save_full_config(data):
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-
-
-def set_license_status_text(text: str):
-    global LICENSE_STATUS_TEXT, license_status_var, license_activate_button
-    LICENSE_STATUS_TEXT = text
-    if license_status_var is not None:
-        try:
-            license_status_var.set(text)
-        except Exception:
-            pass
-    if license_activate_button is not None:
-        try:
-            state = "disabled" if LICENSE_VALID else "normal"
-            license_activate_button.configure(state=state)
-        except Exception:
-            pass
-
-
-def trial_days_left():
-    if not TRIAL_START:
-        return TRIAL_PERIOD_DAYS
-    remaining = datetime.timedelta(days=TRIAL_PERIOD_DAYS) - (datetime.datetime.now() - TRIAL_START)
-    if remaining.total_seconds() <= 0:
-        return 0
-    return max(0, math.ceil(remaining.total_seconds() / 86400))
-
-
-def trial_expired() -> bool:
-    if not TRIAL_START:
-        return False
-    return datetime.datetime.now() - TRIAL_START >= datetime.timedelta(days=TRIAL_PERIOD_DAYS)
-
-
-def enforce_license_for_admin_dialog() -> bool:
-    """Показывает запрос лицензии перед вводом админ-пароля."""
-    if LICENSE_VALID:
-        return True
-
-    if trial_expired():
-        set_license_status_text("❌ Пробный период истёк.")
-        messagebox.showerror(
-            "Пробный период истёк",
-            "Пробный период на 7 дней закончился. Купите ключ в tg: @app_blocker_sell_bot чтобы продолжить использование.",
-        )
-        return False
-
-    # напоминание об активации
-    prompt_license_activation(manual=True)
-
-    if LICENSE_VALID:
-        return True
-
-    if trial_expired():
-        set_license_status_text("❌ Пробный период истёк.")
-        messagebox.showerror(
-            "Пробный период истёк",
-            "Пробный период на 7 дней закончился. Купите ключ в tg: @app_blocker_sell_bot чтобы продолжить использование.",
-        )
-        return False
-
-    days_left = trial_days_left()
-    set_license_status_text(f"🆓 Пробный период: осталось {days_left} дн.")
-    return True
-
-
-def prompt_license_activation(manual: bool = False) -> bool:
-    """Современное окно активации лицензии (CustomTkinter GUI)."""
-    global LICENSE_KEY, LICENSE_VALID, TRIAL_START
-
-    config = load_full_config()
-
-    dialog = ctk.CTkToplevel(root)
-    dialog.title("Активация лицензии")
-    dialog.geometry("480x260")
-    dialog.resizable(False, False)
-    dialog.grab_set()
-    dialog.transient(root)
-    dialog.iconbitmap(os.path.join(base_dir(), "icon.ico"))
-
-    # Центрирование
-    dialog.update_idletasks()
-    x = (dialog.winfo_screenwidth() - dialog.winfo_reqwidth()) // 2
-    y = (dialog.winfo_screenheight() - dialog.winfo_reqheight()) // 2
-    dialog.geometry(f"+{x}+{y}")
-
-    ctk.CTkLabel(
-        dialog,
-        text="🔑 Введите лицензионный ключ",
-        font=("Arial", 18, "bold")
-    ).pack(pady=(25, 10))
-
-    entry = ctk.CTkEntry(dialog, width=300, placeholder_text="ABLKR-XXXX-XXXX-XXXX")
-    entry.pack(pady=10)
-    entry.focus_set()
-
-    status_label = ctk.CTkLabel(dialog, text="", text_color="gray")
-    status_label.pack(pady=(5, 10))
-
-    result = {"success": False}
-
-    def activate():
-        key = entry.get().strip().upper()
-        if not key:
-            status_label.configure(text="⚠️ Ключ не может быть пустым.", text_color="orange")
-            return
-
-        if key in VALID_LICENSE_KEYS:
-            LICENSE_KEY = key
-            LICENSE_VALID = True
-            config["license_key"] = key
-            config["license_activated_at"] = datetime.datetime.now().isoformat()
-            if TRIAL_START:
-                config["trial_start"] = TRIAL_START.isoformat()
-            save_full_config(config)
-            set_license_status_text("🔑 Приложение активировано ключом.")
-            messagebox.showinfo("Успех", "Лицензия успешно активирована!")
-            result["success"] = True
-            dialog.destroy()
-        else:
-            status_label.configure(text="❌ Ключ недействителен. Проверьте и попробуйте снова.", text_color="red")
-
-    def cancel():
-        result["success"] = False
-        dialog.destroy()
-
-    btn_frame = ctk.CTkFrame(dialog, fg_color="transparent")
-    btn_frame.pack(pady=20)
-
-    ctk.CTkButton(btn_frame, text="✅ Активировать", width=150, command=activate).pack(side="left", padx=10)
-    ctk.CTkButton(btn_frame, text="❌ Отмена", width=150, fg_color="#d62828", hover_color="#a71e1e", command=cancel).pack(side="left", padx=10)
-
-    entry.bind("<Return>", lambda e: activate())
-    entry.bind("<Escape>", lambda e: cancel())
-
-    dialog.wait_window()
-    return result["success"]
-
-
-def ensure_license_valid() -> bool:
-    global LICENSE_KEY, LICENSE_VALID, TRIAL_START
-
-    config = load_full_config()
-
-    trial_start_raw = config.get("trial_start")
-    if trial_start_raw:
-        try:
-            TRIAL_START = datetime.datetime.fromisoformat(trial_start_raw)
-        except ValueError:
-            TRIAL_START = None
-
-    if TRIAL_START is None:
-        TRIAL_START = datetime.datetime.now()
-        config["trial_start"] = TRIAL_START.isoformat()
-        save_full_config(config)
-
-    saved_key = config.get("license_key", "").strip().upper()
-    if saved_key and saved_key in VALID_LICENSE_KEYS:
-        LICENSE_KEY = saved_key
-        LICENSE_VALID = True
-        set_license_status_text("🔑 Приложение активировано ключом.")
-        return True
-
-    LICENSE_KEY = ""
-    LICENSE_VALID = False
-
-    if saved_key and saved_key not in VALID_LICENSE_KEYS:
-        messagebox.showerror("Ошибка ключа", "Сохранённый ключ недействителен. Введите корректный ключ.")
-        config.pop("license_key", None)
-        save_full_config(config)
-
-    now = datetime.datetime.now()
-    if now - TRIAL_START >= datetime.timedelta(days=TRIAL_PERIOD_DAYS):
-        set_license_status_text("❌ Пробный период истёк.")
-        messagebox.showerror(
-            "Пробный период истёк",
-            "Пробный период на 7 дней закончился. Купите ключ в tg: @app_blocker_sell_bot чтобы продолжить использование.",
-        )
-        if prompt_license_activation():
-            return True
-        return False
-
-    days_left = trial_days_left()
-    set_license_status_text(f"🆓 Пробный период: осталось {days_left} дн.")
-    return True
-
-
-def request_manual_activation():
-    if prompt_license_activation(manual=True):
-        try:
-            log("🔑 Лицензия активирована по ключу.")
-        except Exception:
-            pass
-    else:
-        if TRIAL_START and datetime.datetime.now() - TRIAL_START >= datetime.timedelta(days=TRIAL_PERIOD_DAYS):
-            set_license_status_text("❌ Пробный период истёк.")
-        else:
-            days_left = trial_days_left()
-            set_license_status_text(f"🆓 Пробный период: осталось {days_left} дн.")
-
 def save_blocked_sites(sites):
     """Сохраняет список сайтов в config.json"""
     if os.path.exists(CONFIG_PATH):
@@ -794,7 +410,8 @@ def save_config(status="RUNNING"):
         "timer_enabled": TIMER_ENABLED,
         "timer_end": TIMER_END.timestamp() if TIMER_END else None,
         "secure_enabled": SECURE_ENABLED,
-        "permanent_lock": PERMANENT_LOCK
+        "permanent_lock": PERMANENT_LOCK,
+        "authenticated": True
     })
 
     # ✅ Сохраняем обратно
@@ -1062,11 +679,6 @@ def ensure_secure_system():
 def exit_app():
     global monitoring_active, watch_active, APP_CLOSING
 
-    if not enforce_license_for_admin_dialog():
-        log("🚫 Закрытие недоступно без активации лицензии.")
-        root.after(100, root.destroy)
-        return
-
     password_input = custom_password_dialog(
         "Выход",
         "Введите пароль администратора для выхода:"
@@ -1080,6 +692,17 @@ def exit_app():
         if APP_CLOSING:
             return
         APP_CLOSING = True
+
+    # Сразу после "with EXIT_LOCK:" и проверки APP_CLOSING
+    try:
+        if os.path.exists(CONFIG_PATH):
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                _d = json.load(f)
+            _d["authenticated"] = False
+            with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+                json.dump(_d, f, indent=2)
+    except Exception:
+        pass
 
     log("🚪 Начинаем процедуру выхода...")
 
@@ -1360,7 +983,7 @@ about_text.insert("end", "\n\n📝 Описание:\n🧱 App Blocker — си�
                           "Автор не несёт ответственности за использование программы в злоумышленных целях.\n"
                           "Используйте ответственно и не нарушайте права пользователей ⚖️\n\n"
                           "✨ Раздел 'О программе' обновляется с новыми версиями! \n\n"
-                          "программа бесплатная, поддержите автора:\n4441 1111 5818 7579 (mono)\n4314 1402 1489 7073 (ПУМБ) \n5168 7521 2074 2567 (ПРИВАТ)")
+                          "Программа полностью бесплатная, кто может поддержите пожалуйста автора:\n USDT Trc 20 - TSyWGrCkn12LojGEK9urQmWr9ojPimzgBw \n Solana ErQZHWvNHnWQrX2HXbAULTn46uBFkao6aPfarFjKsHva \n Btc bc1qg2a9tnykvdw6sh57hre3mzst8pz3ga5xc7xtye")
 about_text.configure(state="disabled")
 
 # ================== БЛОКИРОВКА САЙТОВ ==================
@@ -1514,21 +1137,6 @@ secure_description = ctk.CTkLabel(
 )
 secure_description.pack(pady=(0, 10))
 
-license_status_var = ctk.StringVar(value=LICENSE_STATUS_TEXT)
-license_status_label = ctk.CTkLabel(
-    settings_frame,
-    textvariable=license_status_var,
-    font=("Arial", 12)
-)
-license_status_label.pack(pady=(10, 5))
-
-license_activate_button = ctk.CTkButton(
-    settings_frame,
-    text="🔑 Активировать по ключу",
-    command=request_manual_activation
-)
-license_activate_button.pack(pady=(0, 10))
-
 # Перехват крестика
 root.protocol("WM_DELETE_WINDOW", on_close)
 
@@ -1538,20 +1146,6 @@ refresh_process_list()
 
 # ----------------- АВТО ЗАПУСК -----------------
 load_config()
-
-if not ensure_license_valid():
-    root.destroy()
-    sys.exit(0)
-
-# 🧾 Отображаем статус лицензии в логах
-if LICENSE_VALID:
-    log("🔑 Лицензия активирована — полный доступ.")
-else:
-    days_left = trial_days_left()
-    if days_left <= 1:
-        log(f"⚠️ Пробный период истекает! Остался {days_left} день.")
-    else:
-        log(f"🆓 Пробная версия активна. Осталось {days_left} дн.")
 
 
 if PERMANENT_LOCK:
@@ -1593,59 +1187,51 @@ if TIMER_ENABLED:
 need_restore_window = False
 
 if not ADMIN_PASSWORD:
-    # показываем диалог до входа в mainloop — но НЕ скрываем окно полностью
-    # Вместо withdraw — минимизируем
     root.iconify()
-
-    if not enforce_license_for_admin_dialog():
-        root.destroy()
-        sys.exit(0)
-
     ADMIN_PASSWORD = custom_password_dialog(
         "Пароль администратора",
         "Введите пароль, который будет использоваться для выхода:",
     )
-
     if not ADMIN_PASSWORD:
         messagebox.showerror("Ошибка", "Пароль не задан! Программа будет закрыта.")
         root.destroy()
         sys.exit(0)
-
-    # ✅ СОХРАНЯЕМ ПАРОЛЬ И ПРИНУДИТЕЛЬНО СБРАСЫВАЕМ ФЛАГИ
-    save_config(status="RUNNING")  # ← Явно указываем статус!
-    APP_CLOSING = False
-    need_restore_window = True
-else:
-    root.iconify()
-
-    if not enforce_license_for_admin_dialog():
-        root.destroy()
-        sys.exit(0)
-
-    authenticated = False
-    for attempt in range(3):
-        prompt = "Введите пароль администратора для входа:"
-        password_input = custom_password_dialog("Пароль администратора", prompt)
-
-        if password_input == ADMIN_PASSWORD:
-            authenticated = True
-            break
-
-        if password_input is None:
-            break
-
-        messagebox.showerror("Ошибка", "Неверный пароль! Попробуйте снова.")
-
-    if not authenticated:
-        messagebox.showerror("Ошибка", "Доступ заблокирован без правильного пароля.")
-        root.destroy()
-        sys.exit(0)
-
-    # ✅ СБРОС ФЛАГОВ, ЧТОБЫ НЕ СРАБОТАЛ exit_app_no_password()
-    log("🔓 Пароль администратора подтверждён.")
     save_config(status="RUNNING")
     APP_CLOSING = False
     need_restore_window = True
+else:
+    _startup_config = {}
+    if os.path.exists(CONFIG_PATH):
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                _startup_config = json.load(f)
+        except Exception:
+            pass
+    _already_authenticated = _startup_config.get("authenticated", False)
+    if _already_authenticated:
+        log("🔄 Автовосстановление — пароль не требуется.")
+        APP_CLOSING = False
+        need_restore_window = True
+    else:
+        root.iconify()
+        authenticated = False
+        for attempt in range(3):
+            password_input = custom_password_dialog("Пароль администратора", "Введите пароль администратора для входа:")
+            if password_input == ADMIN_PASSWORD:
+                authenticated = True
+                break
+            if password_input is None:
+                break
+            messagebox.showerror("Ошибка", "Неверный пароль! Попробуйте снова.")
+        if not authenticated:
+            messagebox.showerror("Ошибка", "Доступ заблокирован без правильного пароля.")
+            root.destroy()
+            sys.exit(0)
+        log("🔓 Пароль администратора подтверждён.")
+        save_config(status="RUNNING")
+        APP_CLOSING = False
+        need_restore_window = True
+
 if need_restore_window:
     root.after(100, lambda: (
         root.deiconify(),
