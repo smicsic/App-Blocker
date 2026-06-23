@@ -52,7 +52,7 @@
 
 ---
 
-# ✨ Что нового в версии 2.3.0
+# ✨ Что нового в версии 2.4.0
 
 * Полностью переработана структура проекта
 * Добавлена блокировка сайтов
@@ -209,7 +209,7 @@ The software is suitable for workplace productivity control, educational environ
 
 ---
 
-# ✨ What's New in Version 2.3.0
+# ✨ What's New in Version 2.4.0
 
 * Completely redesigned project structure
 * Added website blocking functionality
