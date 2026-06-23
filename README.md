@@ -108,5 +108,7 @@ pyinstaller --onefile --noconsole --clean SecureSystem.py
 
 ## Программа полностью бесплатная, кто может поддержите пожалуйста автора 
 ***USDT Trc 20 - TSyWGrCkn12LojGEK9urQmWr9ojPimzgBw***
+
 ***Solana ErQZHWvNHnWQrX2HXbAULTn46uBFkao6aPfarFjKsHva***
+
 ***Btc bc1qg2a9tnykvdw6sh57hre3mzst8pz3ga5xc7xtye***
