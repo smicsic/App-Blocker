@@ -102,4 +102,11 @@ pyinstaller --onefile --noconsole --clean SecureSystem.py
 ## 💖 Автор
 
 Создан с любовью Вовой ([@smics_play](https://github.com/smicsic))  
-🤖 Помощь: ChatGPT-5  
+🤖 Помощь: ChatGPT-5  | ClaudeAI
+
+---
+
+## Программа полностью бесплатная, кто может поддержите пожалуйста автора 
+***USDT Trc 20 - TSyWGrCkn12LojGEK9urQmWr9ojPimzgBw***
+***Solana ErQZHWvNHnWQrX2HXbAULTn46uBFkao6aPfarFjKsHva***
+***Btc bc1qg2a9tnykvdw6sh57hre3mzst8pz3ga5xc7xtye***
