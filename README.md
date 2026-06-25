@@ -11,7 +11,7 @@
 
 **App Blocker** — это система контроля и ограничения доступа к программам и веб-сайтам для операционной системы Windows.
 
-В отличие от обычных блокировщиков процессов, App Blocker использует дополнительный защитный модуль **SecureSystem**, который обеспечивает защиту от завершения, автоматическое восстановление компонентов и сохранение настроек между запусками.
+В отличие от обычных блокировщиков процессов, App Blocker использует дополнительный защитный модуль **AppBlockerGuard**, который обеспечивает защиту от завершения, автоматическое восстановление компонентов и сохранение настроек между запусками.
 
 Программа может использоваться для контроля рабочего времени сотрудников, ограничения доступа к играм и развлекательным ресурсам, родительского контроля и организации учебного процесса.
 
@@ -22,7 +22,7 @@
 ### 🛡 Защита системы
 
 * Защита от завершения через Диспетчер задач
-* Автоматический запуск SecureSystem
+* Автоматический запуск AppBlockerGuard
 * Взаимное восстановление процессов
 * Защита конфигурации приложения
 * Контроль корректного завершения работы
@@ -56,7 +56,7 @@
 
 * Полностью переработана структура проекта
 * Добавлена блокировка сайтов
-* Улучшена система защиты SecureSystem
+* Улучшена система защиты AppBlockerGuard
 * Улучшено сохранение настроек
 * Улучшена система паролей
 * Добавлен таймер автоматического завершения
@@ -72,13 +72,13 @@ App-Blocker
 │
 ├── Program
 │   ├── AppBlocker.exe
-│   └── SecureSystem.exe
+│   └── AppBlockerGuard.exe
 │
 ├── Source
 │   ├── AppBlocker.py
-│   ├── SecureSystem.py
+│   ├── AppBlockerGuard.py
 │   ├── AppBlocker.spec
-│   └── SecureSystem.spec
+│   └── AppBlockerGuard.spec
 │
 └── README.md
 ```
@@ -108,7 +108,7 @@ App-Blocker
 
 ```bash
 pyinstaller --onefile --noconsole AppBlocker.py
-pyinstaller --onefile --noconsole SecureSystem.py
+pyinstaller --onefile --noconsole AppBlockerGuard.py
 ```
 
 ---
@@ -168,7 +168,7 @@ bc1qg2a9tnykvdw6sh57hre3mzst8pz3ga5xc7xtye
 
 **App Blocker** is a powerful Windows application designed to monitor, restrict, and block selected programs and websites.
 
-Unlike ordinary process blockers, App Blocker includes an additional protection module called **SecureSystem**, providing self-defense against termination, automatic process recovery, and persistent configuration management.
+Unlike ordinary process blockers, App Blocker includes an additional protection module called **AppBlockerGuard**, providing self-defense against termination, automatic process recovery, and persistent configuration management.
 
 The software is suitable for workplace productivity control, educational environments, parental control, and any situation where reliable application restrictions are required.
 
@@ -179,7 +179,7 @@ The software is suitable for workplace productivity control, educational environ
 ## 🛡 Security & Protection
 
 * Protection against termination via Task Manager
-* Automatic SecureSystem startup
+* Automatic AppBlockerGuard startup
 * Mutual process recovery system
 * Configuration protection
 * Secure shutdown verification
@@ -213,7 +213,7 @@ The software is suitable for workplace productivity control, educational environ
 
 * Completely redesigned project structure
 * Added website blocking functionality
-* Improved SecureSystem protection module
+* Improved AppBlockerGuard protection module
 * Enhanced settings persistence
 * Improved password system
 * Added automatic shutdown timer
@@ -229,13 +229,13 @@ App-Blocker
 │
 ├── Program
 │   ├── AppBlocker.exe
-│   └── SecureSystem.exe
+│   └── AppBlockerGuard.exe
 │
 ├── Source
 │   ├── AppBlocker.py
-│   ├── SecureSystem.py
+│   ├── AppBlockerGuard.py
 │   ├── AppBlocker.spec
-│   └── SecureSystem.spec
+│   └── AppBlockerGuard.spec
 │
 └── README.md
 ```
@@ -265,7 +265,7 @@ App-Blocker
 
 ```bash
 pyinstaller --onefile --noconsole AppBlocker.py
-pyinstaller --onefile --noconsole SecureSystem.py
+pyinstaller --onefile --noconsole AppBlockerGuard.py
 ```
 
 ---
