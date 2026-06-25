@@ -1,67 +1,102 @@
 # 🧱 App Blocker
 
-### Защищённая система блокировки приложений и сайтов для Windows
+### Современная система блокировки приложений и сайтов для Windows
 
+**Версия:** 2.5.0 Beta
 **Автор:** Вова (@smics_play)
-**Назначение:** школы, офисы, учебные заведения и домашние ПК 🏫💼
 
 ---
 
-## 📖 О проекте
+# 📖 О проекте
 
-**App Blocker** — это система контроля и ограничения доступа к программам и веб-сайтам для операционной системы Windows.
+**App Blocker** — современная программа для Windows, предназначенная для ограничения доступа к приложениям и веб-сайтам.
 
-В отличие от обычных блокировщиков процессов, App Blocker использует дополнительный защитный модуль **AppBlockerGuard**, который обеспечивает защиту от завершения, автоматическое восстановление компонентов и сохранение настроек между запусками.
+Программа позволяет блокировать выбранные процессы, ограничивать доступ к сайтам, защищать себя от завершения и автоматически восстанавливать свою работу после перезапуска системы.
 
-Программа может использоваться для контроля рабочего времени сотрудников, ограничения доступа к играм и развлекательным ресурсам, родительского контроля и организации учебного процесса.
+В отличие от обычных блокировщиков процессов, App Blocker использует отдельный защитный модуль **AppBlockerGuard**, который обеспечивает дополнительный уровень безопасности и стабильности.
+
+Программа отлично подходит для:
+
+* 🏫 Учебных заведений
+* 🏢 Офисов
+* 👨‍👩‍👧 Родительского контроля
+* 💻 Домашнего использования
+* 🔒 Рабочих компьютеров
 
 ---
 
 # 🚀 Возможности
 
-### 🛡 Защита системы
+## 🖥 Блокировка приложений
 
-* Защита от завершения через Диспетчер задач
-* Автоматический запуск AppBlockerGuard
-* Взаимное восстановление процессов
-* Защита конфигурации приложения
-* Контроль корректного завершения работы
-
-### 🖥 Контроль приложений
-
-* Мониторинг выбранных процессов в реальном времени
-* Автоматическое завершение запрещённых программ
+* Блокировка нескольких программ одновременно
+* Мониторинг процессов в режиме реального времени
+* Автоматическое завершение запрещённых приложений
 * Работа в фоновом режиме
-* Просмотр активных процессов пользователя
-* Быстрое обновление списка процессов
-
-### 🌐 Блокировка сайтов
-
-* Блокировка сайтов через системный файл hosts
-* Поддержка неограниченного списка доменов
-* Мгновенное применение изменений
-* Автоматическое восстановление настроек
-
-### ⚙ Дополнительные функции
-
-* Пароль администратора
-* Автоматическое сохранение настроек
-* Таймер автоматического отключения
-* Встроенный журнал действий
-* Готовые EXE-файлы без необходимости установки Python
+* Просмотр активных процессов
+* Различные режимы поиска процессов
+* Автоматическое восстановление мониторинга
 
 ---
 
-# ✨ Что нового в версии 2.4.0
+## 🌐 Блокировка сайтов
 
-* Полностью переработана структура проекта
-* Добавлена блокировка сайтов
-* Улучшена система защиты AppBlockerGuard
-* Улучшено сохранение настроек
+* Блокировка сайтов через системный файл **hosts**
+* Неограниченное количество доменов
+* Мгновенное применение изменений
+* Автоматическая очистка DNS-кэша
+* Независимая работа от блокировки приложений
+
+---
+
+## 🛡 Система защиты
+
+* AppBlockerGuard
+* Защита от завершения через Диспетчер задач
+* Автоматическое восстановление компонентов
+* Автозапуск приложения
+* Проверка целостности конфигурации
+* Корректное завершение работы
+
+---
+
+## 🔐 Безопасность
+
+* Пароль администратора
+* Хранение пароля в виде PBKDF2-хеша
+* Импорт и экспорт настроек
+* Автоматическое резервное копирование конфигурации
+* Подробный журнал событий
+
+---
+
+## 🎨 Интерфейс
+
+* Полностью новый современный интерфейс
+* Фиолетово-розовая цветовая схема
+* Красивый абстрактный фон
+* Современные карточки состояния
+* Встроенная диагностика
+* Поддержка системного трея
+* Кастомные окна приложения
+
+---
+
+# ✨ Что нового в версии 2.5.0
+
+* Полностью переработан дизайн приложения
+* Новый современный интерфейс
+* Добавлен красивый фон приложения
+* Добавлена поддержка системного трея
+* Улучшена работа AppBlockerGuard
+* Улучшена система защиты
 * Улучшена система паролей
-* Добавлен таймер автоматического завершения
-* Улучшена стабильность работы
-* Исправлены ошибки предыдущих версий
+* Добавлены импорт и экспорт конфигурации
+* Добавлено автоматическое резервное копирование настроек
+* Улучшена система логирования
+* Добавлена диагностика системы
+* Улучшена стабильность приложения
+* Исправлено большое количество ошибок предыдущих версий
 
 ---
 
@@ -72,13 +107,13 @@ App-Blocker
 │
 ├── Program
 │   ├── AppBlocker.exe
-│   └── AppBlockerGuard.exe
+│   ├── AppBlockerGuard.exe
+│   └── config.json
 │
 ├── Source
 │   ├── AppBlocker.py
 │   ├── AppBlockerGuard.py
-│   ├── AppBlocker.spec
-│   └── AppBlockerGuard.spec
+│   └── Assets
 │
 └── README.md
 ```
@@ -87,11 +122,20 @@ App-Blocker
 
 # 📥 Быстрый запуск
 
-1. Скачайте последнюю версию из раздела **Releases**
-2. Откройте папку **Program**
-3. Запустите **AppBlocker.exe** от имени администратора
-4. Настройте параметры блокировки
-5. Наслаждайтесь работой программы
+1. Скачайте последнюю версию из раздела Releases.
+2. Распакуйте архив.
+3. Запустите AppBlocker.exe.
+4. Настройте блокируемые приложения и сайты.
+5. При необходимости включите систему защиты.
+6. Начните мониторинг.
+
+---
+
+# ⚠ Важно
+
+Для корректной работы режима защиты может потребоваться добавить папку программы в исключения антивируса.
+
+Исходный код проекта полностью открыт и доступен для проверки на GitHub.
 
 ---
 
@@ -100,9 +144,11 @@ App-Blocker
 ### Требования
 
 * Python 3.10+
-* psutil
 * customtkinter
-* pyfiglet
+* psutil
+* pillow
+* pystray
+* pyinstaller
 
 ### Сборка
 
@@ -115,21 +161,19 @@ pyinstaller --onefile --noconsole AppBlockerGuard.py
 
 # ❤️ Поддержать проект
 
-Если вам понравился проект и вы хотите поддержать его развитие, можете отправить донат:
-
 ### USDT (TRC20)
 
 ```text
 TSyWGrCkn12LojGEK9urQmWr9ojPimzgBw
 ```
 
-### Solana (SOL)
+### Solana
 
 ```text
 ErQZHWvNHnWQrX2HXbAULTn46uBFkao6aPfarFjKsHva
 ```
 
-### Bitcoin (BTC)
+### Bitcoin
 
 ```text
 bc1qg2a9tnykvdw6sh57hre3mzst8pz3ga5xc7xtye
@@ -139,11 +183,11 @@ bc1qg2a9tnykvdw6sh57hre3mzst8pz3ga5xc7xtye
 
 ---
 
-# ⚠️ Отказ от ответственности
+# ⚠ Отказ от ответственности
 
-Данный проект предназначен для образовательного, административного и офисного использования.
+Проект предназначен исключительно для образовательных, административных и организационных целей.
 
-Автор не несёт ответственности за возможное неправильное использование программы третьими лицами.
+Используйте App Blocker только на компьютерах, где вы имеете право ограничивать доступ к программам и сайтам.
 
 ---
 
@@ -151,74 +195,109 @@ bc1qg2a9tnykvdw6sh57hre3mzst8pz3ga5xc7xtye
 
 **Вова (@smics_play)**
 
-Разработано с использованием Python ❤️
+Разработано с ❤️ на Python.
 
 ---
 
 # 🧱 App Blocker
 
-### Secure Application and Website Blocking System for Windows
+### Modern Application & Website Blocking System for Windows
 
-**Author:** Vova (@smics_play)
-**Purpose:** Schools, offices, educational institutions, and personal computers 🏫💼
+**Version:** 2.5.0 Beta
+**Developer:** Vova (@smics_play)
 
 ---
 
-# 📖 About the Project
+# 📖 About
 
-**App Blocker** is a powerful Windows application designed to monitor, restrict, and block selected programs and websites.
+**App Blocker** is a modern Windows application designed to restrict access to selected applications and websites.
 
-Unlike ordinary process blockers, App Blocker includes an additional protection module called **AppBlockerGuard**, providing self-defense against termination, automatic process recovery, and persistent configuration management.
+The software allows users to block processes, restrict websites, protect itself against termination and automatically recover its services after system restart.
 
-The software is suitable for workplace productivity control, educational environments, parental control, and any situation where reliable application restrictions are required.
+Unlike traditional process blockers, App Blocker includes a dedicated protection module called **AppBlockerGuard**, providing an additional layer of security and stability.
+
+Perfect for:
+
+* 🏫 Schools
+* 🏢 Offices
+* 👨‍👩‍👧 Parental Control
+* 💻 Home Computers
+* 🔒 Workstations
 
 ---
 
 # 🚀 Features
 
-## 🛡 Security & Protection
+## 🖥 Application Blocking
 
-* Protection against termination via Task Manager
-* Automatic AppBlockerGuard startup
-* Mutual process recovery system
-* Configuration protection
-* Secure shutdown verification
-
-## 🖥 Application Control
-
+* Block multiple applications simultaneously
 * Real-time process monitoring
-* Automatic termination of blocked applications
-* Background operation
+* Automatic termination of blocked software
+* Background monitoring
 * Active process viewer
-* Quick process list refresh
+* Multiple matching modes
+* Automatic monitoring recovery
+
+---
 
 ## 🌐 Website Blocking
 
 * Website blocking through the Windows hosts file
-* Support for unlimited domains
-* Instant application of changes
-* Automatic configuration restoration
-
-## ⚙ Additional Features
-
-* Administrator password protection
-* Automatic settings saving
-* Auto-shutdown timer
-* Built-in activity logs
-* Ready-to-use EXE files (no Python installation required)
+* Unlimited domain support
+* Instant activation
+* Automatic DNS cache flushing
+* Independent website management
 
 ---
 
-# ✨ What's New in Version 2.4.0
+## 🛡 Protection
 
-* Completely redesigned project structure
-* Added website blocking functionality
-* Improved AppBlockerGuard protection module
-* Enhanced settings persistence
-* Improved password system
-* Added automatic shutdown timer
-* Increased stability and reliability
-* Fixed issues from previous versions
+* AppBlockerGuard protection module
+* Task Manager termination protection
+* Automatic component recovery
+* Startup protection
+* Configuration integrity verification
+* Safe shutdown handling
+
+---
+
+## 🔐 Security
+
+* Administrator password
+* Secure PBKDF2 password hashing
+* Import & Export configuration
+* Automatic configuration backup
+* Detailed activity logs
+
+---
+
+## 🎨 User Interface
+
+* Completely redesigned modern UI
+* Purple & Pink theme
+* Beautiful abstract background
+* Modern status cards
+* Built-in diagnostics
+* System tray support
+* Custom application dialogs
+
+---
+
+# ✨ What's New in Version 2.5.0
+
+* Completely redesigned interface
+* Brand new modern UI
+* Added dynamic application background
+* Added system tray support
+* Improved AppBlockerGuard
+* Improved protection system
+* Improved password security
+* Added configuration import/export
+* Added automatic configuration backup
+* Improved logging system
+* Added diagnostics tools
+* Improved application stability
+* Fixed numerous bugs from previous versions
 
 ---
 
@@ -229,13 +308,13 @@ App-Blocker
 │
 ├── Program
 │   ├── AppBlocker.exe
-│   └── AppBlockerGuard.exe
+│   ├── AppBlockerGuard.exe
+│   └── config.json
 │
 ├── Source
 │   ├── AppBlocker.py
 │   ├── AppBlockerGuard.py
-│   ├── AppBlocker.spec
-│   └── AppBlockerGuard.spec
+│   └── Assets
 │
 └── README.md
 ```
@@ -244,24 +323,35 @@ App-Blocker
 
 # 📥 Quick Start
 
-1. Download the latest version from the **Releases** section.
-2. Open the **Program** folder.
-3. Run **AppBlocker.exe** as Administrator.
-4. Configure your blocking settings.
-5. Enjoy secure application control.
+1. Download the latest release.
+2. Extract the archive.
+3. Run AppBlocker.exe.
+4. Configure blocked applications and websites.
+5. Enable Protection Mode if required.
+6. Start monitoring.
 
 ---
 
-# 🛠 Building from Source
+# ⚠ Important
 
-## Requirements
+Protection Mode may require adding the App Blocker folder to your antivirus exclusions.
+
+The entire source code is open and available for inspection on GitHub.
+
+---
+
+# 🛠 Build from Source
+
+### Requirements
 
 * Python 3.10+
-* psutil
 * customtkinter
-* pyfiglet
+* psutil
+* pillow
+* pystray
+* pyinstaller
 
-## Build Commands
+### Build
 
 ```bash
 pyinstaller --onefile --noconsole AppBlocker.py
@@ -272,21 +362,19 @@ pyinstaller --onefile --noconsole AppBlockerGuard.py
 
 # ❤️ Support the Project
 
-If you enjoy the project and would like to support future development, donations are greatly appreciated.
-
-## USDT (TRC20)
+### USDT (TRC20)
 
 ```text
 TSyWGrCkn12LojGEK9urQmWr9ojPimzgBw
 ```
 
-## Solana (SOL)
+### Solana
 
 ```text
 ErQZHWvNHnWQrX2HXbAULTn46uBFkao6aPfarFjKsHva
 ```
 
-## Bitcoin (BTC)
+### Bitcoin
 
 ```text
 bc1qg2a9tnykvdw6sh57hre3mzst8pz3ga5xc7xtye
@@ -298,16 +386,14 @@ Thank you for supporting the project ❤️
 
 # ⚠ Disclaimer
 
-This project is intended for educational, administrative, parental control, and office productivity purposes.
+This project is intended for educational, administrative and productivity purposes.
 
-The author is not responsible for any misuse or unauthorized use of this software by third parties.
-
-Please use responsibly and respect the rights of other users.
+Use App Blocker only on computers where you are authorized to restrict access to applications and websites.
 
 ---
 
-# 👨‍💻 Author
+# 👨‍💻 Developer
 
 **Vova (@smics_play)**
 
-Developed with Python ❤️
+Developed with ❤️ using Python.
