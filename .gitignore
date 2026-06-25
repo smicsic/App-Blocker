@@ -1,8 +1,0 @@
-.idea/
-.venv/
-build/
-dist/
-.gitignore/
-.agents/
-.git/
-__pycache__/
