@@ -1,5 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
+import os
 from PyInstaller.utils.hooks import collect_all
+
+spec_dir = os.path.abspath(SPECPATH)
+icon_path = os.path.join(spec_dir, '..', 'Program', 'icon.ico')
 
 datas = []
 binaries = []
@@ -42,5 +46,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['icon.ico'],
+    icon=[icon_path],
 )

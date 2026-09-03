@@ -1,0 +1,27 @@
+{
+  "process_name": "",
+  "blocked_programs": [],
+  "admin_password_hash": "",
+  "admin_password_salt": "",
+  "status": "EXIT",
+  "timer_enabled": false,
+  "timer_end": null,
+  "secure_enabled": true,
+  "security_warning_seen": true,
+  "permanent_lock": false,
+  "match_mode": "contains",
+  "authenticated": false,
+  "block_mode": "blacklist",
+  "schedule_enabled": false,
+  "schedule": {
+    "monday": [],
+    "tuesday": [],
+    "wednesday": [],
+    "thursday": [],
+    "friday": [],
+    "saturday": [],
+    "sunday": []
+  },
+  "postpone_enabled": false,
+  "postpone_seconds": 60
+}
