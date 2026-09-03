@@ -1,21 +1,22 @@
 # 🧱 App Blocker
 
-### Современная система блокировки приложений и сайтов для Windows
+### Современная система блокировки приложений и сайтов для Linux
 
 **Версия:** 3.0.0
 **Автор:** Вова (@smics_play)
 
-> 🐧 **Есть версия для Linux.** В репозитории на GitHub App Blocker распространяется
-> в виде двух отдельных папок: `Windows/` (эта версия) и `Linux/` (порт на
-> systemd, `/etc/hosts`, `pkexec` и XDG-автозапуск вместо реестра и Task
-> Scheduler). Функциональность одинаковая, но реализация системно-специфичных
-> частей разная — если вы на Linux, используйте папку `Linux/` и её README.
+> 🪟 **Есть версия для Windows.** В репозитории на GitHub App Blocker
+> распространяется в виде двух отдельных папок: `Linux/` (эта версия, порт на
+> systemd, `/etc/hosts`, `pkexec` и XDG-автозапуск) и `Windows/` (оригинальная
+> версия на реестре и Task Scheduler). Функциональность одинаковая, но
+> реализация системно-специфичных частей разная — если вы на Windows,
+> используйте папку `Windows/` и её README.
 
 ---
 
 # 📖 О проекте
 
-**App Blocker** — современная программа для Windows, предназначенная для ограничения доступа к приложениям и веб-сайтам.
+**App Blocker** — современная программа для Linux, предназначенная для ограничения доступа к приложениям и веб-сайтам.
 
 Программа позволяет блокировать выбранные процессы, ограничивать доступ к сайтам, защищать себя от завершения и автоматически восстанавливать свою работу после перезапуска системы.
 
@@ -52,8 +53,8 @@
 
 Системные процессы в режиме «Белый список» защищены **двумя независимыми барьерами**:
 
-1. Список «никогда не завершать»: ядро ОС, вход в систему, Проводник, антивирус, обновления, Диспетчер задач, сам App Blocker и AppBlockerGuard.
-2. Проверка владельца процесса — завершаются только процессы вашей учётной записи. Службы под `SYSTEM` и `LOCAL SERVICE` отсекаются **структурно**, без перечисления имён, поэтому защита не зависит ни от конкретного компьютера, ни от языка Windows.
+1. Список «никогда не завершать»: ядро ОС, графическая сессия и её окружение, сетевые и звуковые службы, сам App Blocker и AppBlockerGuard.
+2. Проверка владельца процесса — завершаются только процессы вашей учётной записи. Системные службы отсекаются **структурно**, по владельцу процесса (root вместо вас), без перечисления имён, поэтому защита не зависит ни от конкретного компьютера, ни от дистрибутива.
 
 Дополнительно защищены сам процесс приложения и вся цепочка его родителей — при запуске из исходников режим не завершит ни Python, ни среду разработки.
 
@@ -93,7 +94,7 @@
 * Лента последних событий с временем, целью и типом
 * **Экспорт в CSV**: разделитель `;` и кодировка UTF-8 с BOM — Excel открывает кириллицу без «кракозябр» и сам раскладывает по столбцам
 
-История хранится в отдельном файле `stats.json` в `%APPDATA%\AppBlocker` и не смешивается с настройками: `config.json` пользователи экспортируют и импортируют, история блокировок там лишняя.
+История хранится в отдельном файле `stats.json` в `~/.local/share/AppBlocker` и не смешивается с настройками: `config.json` пользователи экспортируют и импортируют, история блокировок там лишняя.
 
 ---
 
@@ -204,63 +205,104 @@
 
 # 📂 Структура проекта
 
+Ниже — дерево папки `Linux/` из репозитория (в текущем виде это корень
+проекта) с описанием каждого файла. Соседняя папка `Windows/` устроена так же,
+но с Windows-специфичными модулями вместо перечисленных ниже.
+
 ```text
-App-Blocker
+Linux/
 │
-├── Program                     скомпилированная версия
-│   ├── AppBlocker.exe
-│   ├── AppBlockerGuard.exe
-│   ├── config.json
-│   └── flet\                   клиент Flet (см. раздел о сборке)
+├── AppBlocker.spec              PyInstaller-спека для сборки из корня репозитория
+├── icon.ico                     иконка в формате Windows, унаследована при портировании;
+│                                 используется как запасной вариант при поиске иконки
+├── icon.png                     PNG-иконка для окна/трея и Linux-сборки (сделана из icon.ico)
+├── requirements.txt             зависимости Python + заметка про системные пакеты для трея
+├── version1.txt                 номер версии сборки
+├── README.md                    этот файл
 │
-├── Source
-│   ├── AppBlocker.py           точка входа
-│   ├── AppBlockerGuard.py      защитный модуль (независим от appcore)
-│   │
-│   ├── appcore                 логика, без интерфейса
-│   │   ├── state.py            общее изменяемое состояние
-│   │   ├── config_store.py     config.json, пароль, импорт/экспорт
-│   │   ├── processes.py        мониторинг и завершение процессов
-│   │   ├── postpone.py         мягкая блокировка с отсчётом
-│   │   ├── schedule.py         расписание по дням недели
-│   │   ├── stats.py            stats.json, показатели, экспорт CSV
-│   │   ├── sites.py            блокировка сайтов через hosts
-│   │   ├── security.py         AppBlockerGuard, автозапуск, диагностика
-│   │   ├── lifecycle.py        запуск, трей, таймер, выход
-│   │   ├── i18n.py             переводы RU/EN
-│   │   ├── logging_util.py     журнал в файл и в интерфейс
-│   │   ├── paths.py            пути к конфигу, логам, состоянию
-│   │   ├── theme.py            палитра и геометрия
-│   │   └── admin.py            права администратора
-│   │
-│   └── gui                     интерфейс на Flet
-│       ├── shell.py            окно, навигация, панель логов, роутинг
-│       ├── bootstrap.py        стартовая последовательность
-│       ├── context.py          общий контекст и мост в цикл событий
-│       ├── common.py           фабрики контролов в оформлении приложения
-│       ├── animations.py       подсветка под курсором, влёт строк
-│       ├── dialogs.py          модальные окна
-│       └── tabs                по файлу на вкладку
-│           ├── monitor_tab.py
-│           ├── sites_tab.py
-│           ├── schedule_tab.py
-│           ├── stats_tab.py
-│           ├── settings_tab.py
-│           └── about_tab.py
+├── Program/                     папка "готовой" версии программы
+│   ├── AppBlocker.exe           ⚠ старый Windows-бинарник, оставлен как исторический артефакт
+│   ├── AppBlockerGuard.exe      ⚠ старый Windows-бинарник — после Linux-сборки замените
+│   │                              оба на `AppBlocker`/`AppBlockerGuard` без расширения
+│   ├── AppBlocker.desktop       шаблон XDG-лаунчера (пункт в меню приложений);
+│   │                              Exec=/Icon= нужно поправить под реальный путь установки
+│   └── icon.png                 копия иконки рядом со собранной программой
 │
-├── requirements.txt
-└── README.md
+├── installer_output/
+│   └── AppBlockerSetup.exe      инсталлятор Windows-версии (NSIS/Inno) — к Linux не относится,
+│                                  оставлен от предыдущей версии, для Linux-сборки не создаётся
+│
+├── build/, dist/                служебные каталоги PyInstaller (кэш и результат сборки);
+│                                  создаются заново при каждой сборке
+│
+└── Source/                      исходный код
+    ├── AppBlocker.py            точка входа — вызывает gui.bootstrap.run()
+    ├── AppBlocker.py.bak        архивная копия монолитного AppBlocker.py (3327 строк)
+    │                              до разделения на appcore/gui; программой не используется
+    ├── AppBlockerGuard.py       защитный модуль-наблюдатель, отдельный процесс;
+    │                              не импортирует appcore — минимальные зависимости для
+    │                              отдельной PyInstaller-сборки
+    ├── AppBlocker.spec          более полная спека сборки (запускается из Source/):
+    │                              бандлит шрифт Huninn, иконку, опционально клиент Flet
+    ├── AppBlockerGuard.spec     спека сборки защитного модуля
+    ├── config.json              файл настроек (пример/дев-конфиг)
+    ├── config.backup.json       его резервная копия
+    ├── Huninn-Regular.ttf       шрифт, встроенный в интерфейс по умолчанию (см. appcore/theme.py)
+    ├── logs/appblocker.log      файл журнала (создаётся программой при запуске)
+    │
+    ├── appcore/                 вся логика, без интерфейса
+    │   ├── __init__.py          пустой, помечает пакет
+    │   ├── admin.py             проверка root-прав (os.geteuid())
+    │   ├── config_store.py      config.json, хеш пароля админа (PBKDF2), импорт/экспорт
+    │   ├── i18n.py              таблицы переводов RU/EN и переключение языка
+    │   ├── lifecycle.py         единственный экземпляр (flock), окно, трей, выход, таймер
+    │   ├── logging_util.py      запись в файл лога и опционально в виджет интерфейса
+    │   ├── paths.py             все пути: XDG-конфиг/данные, /etc/hosts, автозапуск,
+    │   │                          поиск иконки/шрифта/клиента Flet
+    │   ├── postpone.py          состояние «мягкой блокировки» (диалог с отсчётом),
+    │   │                          ничего не знает об интерфейсе
+    │   ├── processes.py         список защищённых процессов, сопоставление правил,
+    │   │                          мониторинг и завершение процессов
+    │   ├── schedule.py          расписание блокировки по дням недели
+    │   ├── security.py          AppBlockerGuard (запуск/слежение), автозапуск через
+    │   │                          .desktop-файлы (XDG), диагностика
+    │   ├── sites.py             блокировка сайтов через /etc/hosts (с эскалацией через
+    │   │                          pkexec), очистка DNS-кэша, список браузеров
+    │   ├── state.py             общее изменяемое состояние приложения
+    │   ├── stats.py             статистика (stats.json), экспорт в CSV
+    │   └── theme.py             цвета, радиусы, шрифты
+    │
+    └── gui/                     интерфейс на Flet
+        ├── __init__.py          пустой
+        ├── animations.py        подсветка под курсором, влёт строк списка
+        ├── bootstrap.py         стартовая последовательность (пароль, восстановление состояния)
+        ├── common.py            фабрики контролов (кнопки, поля, карточки) в едином стиле
+        ├── context.py           общий контекст интерфейса, мост между потоками
+        │                          и циклом событий Flet
+        ├── dialogs.py           модальные окна (пароль, подтверждения, отсчёт мягкой блокировки)
+        ├── shell.py             главное окно: навигация, панель логов, роутинг вкладок
+        └── tabs/                по файлу на вкладку
+            ├── __init__.py
+            ├── about_tab.py     вкладка «О программе»
+            ├── monitor_tab.py   вкладка «Мониторинг» (список процессов, блокировка)
+            ├── schedule_tab.py  вкладка «Расписание»
+            ├── settings_tab.py  вкладка «Настройки» (автозапуск/диагностика, конфиг,
+            │                      режимы, таймер, защита)
+            ├── sites_tab.py     вкладка «Сайты»
+            └── stats_tab.py     вкладка «Статистика»
 ```
 
-Файлы состояния лежат в `%APPDATA%\AppBlocker`: `stats.json`, `language.json`, `security_state.json`. Настройки (`config.json`) и журнал — рядом с исполняемым файлом, поэтому у сборок в разных папках свои настройки.
+Файлы состояния лежат в `~/.local/share/AppBlocker` (XDG data): `stats.json`, `language.json`, `security_state.json`, lock-файл единственного экземпляра. Настройки (`config.json`) и журнал — рядом с исполняемым файлом, поэтому у сборок в разных папках свои настройки. Автозапуск живёт отдельно, в `~/.config/autostart/*.desktop`.
+
+В `Source/` два файла `AppBlocker.spec` (корневой и внутри `Source/`) — это не дубль по ошибке: корневой строит из корня репозитория и содержит минимальный набор данных, а `Source/AppBlocker.spec` запускается из `Source/` и бандлит шрифт, иконку и (опционально) клиент Flet. Пользуйтесь тем, который удобнее для вашего процесса сборки — собирают один и тот же `AppBlocker.py`.
 
 ---
 
 # 📥 Быстрый запуск
 
-1. Скачайте последнюю версию из раздела Releases.
+1. Скачайте последнюю версию из раздела Releases (папка `Linux/`).
 2. Распакуйте архив.
-3. Запустите AppBlocker.exe.
+3. Запустите бинарник `AppBlocker` (или ярлык из меню приложений, если поставили `.desktop`-файл).
 4. Настройте блокируемые приложения и сайты.
 5. При необходимости включите систему защиты.
 6. Начните мониторинг.
@@ -269,22 +311,32 @@ App-Blocker
 
 # ⚠ Важно
 
-Для корректной работы режима защиты может потребоваться добавить папку программы в исключения антивируса.
-
 Исходный код проекта полностью открыт и доступен для проверки на GitHub.
 
 ---
 
-# 🛠 Сборка из исходного кода
+# 🐧 App Blocker на Linux
+
+Начиная с этой версии, App Blocker портирован с Windows на Linux. Ниже — что
+изменилось по сравнению с Windows-версией.
+
+### Установка системных зависимостей
+
+Иконка в трее у `pystray` на Linux рисуется через GTK/AppIndicator, это
+системные пакеты, а не pip-зависимости:
+
+```bash
+# Debian / Ubuntu
+sudo apt install python3-gi gir1.2-ayatanaappindicator3-0.1
+```
+
+На дистрибутивах без этого пакета трей отключается сам — приложение сворачивает
+окно вместо скрытия в трей и продолжает работать.
 
 ### Требования
 
 * Python 3.10+
-* flet (интерфейс)
-* psutil
-* pillow
-* pystray
-* pyinstaller
+* flet, psutil, pillow, pystray, pyinstaller (см. `requirements.txt`)
 
 ```bash
 pip install -r requirements.txt
@@ -293,51 +345,52 @@ pip install -r requirements.txt
 ### Запуск из исходников
 
 ```bash
-cd Source && python AppBlocker.py
+cd Source && python3 AppBlocker.py
 ```
 
 ### Сборка
 
 ```bash
-pyinstaller Source/AppBlocker.spec
-```
-
-```bash
+pyinstaller AppBlocker.spec
 pyinstaller Source/AppBlockerGuard.spec
 ```
 
-### Клиент Flet рядом с exe
+### Клиент Flet рядом с бинарником
 
-Окно рисует отдельная программа — `flet.exe` (около 100 МБ). В пакет `flet-desktop`
-она не входит: при первом запуске Flet скачивает её с GitHub в `%USERPROFILE%\.flet`.
-Для собранной версии так нельзя — App Blocker стартует при входе в Windows и
-перезапускается AppBlockerGuard, то есть может подниматься без интернета.
-
-Поэтому клиент кладётся папкой `flet` рядом с `AppBlocker.exe`:
+Окно рисует отдельная программа — клиент Flet (около 100 МБ). В пакет
+`flet-desktop` она не входит: при первом запуске Flet скачивает её с GitHub в
+`~/.flet`. Для собранной версии так нельзя — App Blocker стартует при входе в
+систему и перезапускается AppBlockerGuard, то есть может подниматься без
+интернета. Поэтому клиент кладётся папкой `flet` рядом с бинарником:
 
 ```text
-Program\
-  AppBlocker.exe
-  AppBlockerGuard.exe
-  icon.ico
-  flet\
-    flet.exe
+Program/
+  AppBlocker
+  AppBlockerGuard
+  icon.png
+  flet/
+    flet
     ...
 ```
 
 Взять её можно из кеша после первого запуска из исходников:
 
 ```bash
-xcopy /E /I "%USERPROFILE%\.flet\client\flet-desktop-full-<версия>\flet" "Program\flet"
+cp -r ~/.flet/client/flet-desktop-light-<версия>/flet Program/flet
 ```
 
-Если раздавать папку неудобно, клиент можно встроить в сам exe. Тогда файл
-получится примерно на 100 МБ больше и будет распаковываться в temp при каждом
-запуске:
+### Запись hosts и права root
 
-```bash
-set BUNDLE_FLET_CLIENT=1 && pyinstaller Source/AppBlocker.spec
-```
+Блокировка сайтов правит `/etc/hosts`, а это требует root. Приложению не нужно
+запускаться целиком от root: при каждой записи hosts оно точечно поднимает
+права через `pkexec` (диалог polkit с паролем), а не требует sudo на старте.
+
+### Автозапуск
+
+Вместо реестра Windows и Task Scheduler автозапуск AppBlocker и AppBlockerGuard
+делается через XDG: `.desktop`-файлы кладутся в `~/.config/autostart/`. Никаких
+привилегий для этого не нужно — файл автозапуска пишется от имени
+пользователя.
 
 ---
 
@@ -384,23 +437,23 @@ bc1qg2a9tnykvdw6sh57hre3mzst8pz3ga5xc7xtye
 
 # 🧱 App Blocker
 
-### Modern Application & Website Blocking System for Windows
+### Modern Application & Website Blocking System for Linux
 
 **Version:** 3.0.0
 **Developer:** Vova (@smics_play)
 
-> 🐧 **A Linux version exists too.** On GitHub, App Blocker ships as two
-> separate folders in the same repository: `Windows/` (this version) and
-> `Linux/` (a port to systemd, `/etc/hosts`, `pkexec`, and XDG autostart
-> instead of the registry and Task Scheduler). Functionality is the same, but
-> OS-specific internals differ — if you're on Linux, use the `Linux/` folder
-> and its own README.
+> 🪟 **A Windows version exists too.** On GitHub, App Blocker ships as two
+> separate folders in the same repository: `Linux/` (this version — a port to
+> systemd, `/etc/hosts`, `pkexec`, and XDG autostart) and `Windows/` (the
+> original version, built on the registry and Task Scheduler). Functionality
+> is the same, but OS-specific internals differ — if you're on Windows, use
+> the `Windows/` folder and its own README.
 
 ---
 
 # 📖 About
 
-**App Blocker** is a modern Windows application designed to restrict access to selected applications and websites.
+**App Blocker** is a modern Linux application designed to restrict access to selected applications and websites.
 
 The software allows users to block processes, restrict websites, protect itself against termination and automatically recover its services after system restart.
 
@@ -437,8 +490,8 @@ Perfect for:
 
 In whitelist mode, system processes are protected by **two independent barriers**:
 
-1. A never-terminate list: OS core, logon, Explorer, antivirus, updates, Task Manager, App Blocker itself and AppBlockerGuard.
-2. A process owner check — only processes of your own account are terminated. Services running as `SYSTEM` or `LOCAL SERVICE` are excluded **structurally**, without listing their names, so the protection does not depend on the particular machine or on the Windows display language.
+1. A never-terminate list: OS core, the graphical session and its environment, network and audio services, App Blocker itself and AppBlockerGuard.
+2. A process owner check — only processes of your own account are terminated. System services are excluded **structurally**, by process owner (root instead of you), without listing their names, so the protection does not depend on the particular machine or distribution.
 
 The application's own process and its whole parent chain are protected too — when run from source, the mode will not terminate Python or your IDE.
 
@@ -478,13 +531,13 @@ The schedule can only **turn blocking on**. If blocking was already started manu
 * A feed of recent events with time, target and type
 * **CSV export** with `;` as the delimiter and UTF-8 with BOM — Excel opens Cyrillic correctly and splits the columns by itself
 
-History is stored in a separate `stats.json` file under `%APPDATA%\AppBlocker` and is kept apart from the settings: `config.json` is exported and imported by users, and the blocking history has no place there.
+History is stored in a separate `stats.json` file under `~/.local/share/AppBlocker` and is kept apart from the settings: `config.json` is exported and imported by users, and the blocking history has no place there.
 
 ---
 
 ## 🌐 Website Blocking
 
-* Website blocking through the Windows hosts file
+* Website blocking through the system hosts file (`/etc/hosts`)
 * Unlimited domain support
 * Instant activation
 * Automatic DNS cache flushing
@@ -589,63 +642,105 @@ The interface was rewritten from CustomTkinter to **Flet** (Flutter under the ho
 
 # 📂 Project Structure
 
+Below is the tree of the repository's `Linux/` folder (in this working copy
+it's the project root), with a description of every file. The sibling
+`Windows/` folder is laid out the same way, but with Windows-specific modules
+instead of the ones listed below.
+
 ```text
-App-Blocker
+Linux/
 │
-├── Program                     compiled release
-│   ├── AppBlocker.exe
-│   ├── AppBlockerGuard.exe
-│   ├── config.json
-│   └── flet\                   Flet client (see the build section)
+├── AppBlocker.spec              PyInstaller spec for building from the repo root
+├── icon.ico                     Windows-format icon, inherited from the port;
+│                                 used as a fallback when looking up the icon
+├── icon.png                     PNG icon for the window/tray and Linux build (made from icon.ico)
+├── requirements.txt             Python dependencies + a note on system packages for the tray
+├── version1.txt                 build version number
+├── README.md                    this file
 │
-├── Source
-│   ├── AppBlocker.py           entry point
-│   ├── AppBlockerGuard.py      protection module (independent of appcore)
-│   │
-│   ├── appcore                 logic, no interface
-│   │   ├── state.py            shared mutable state
-│   │   ├── config_store.py     config.json, password, import/export
-│   │   ├── processes.py        process monitoring and termination
-│   │   ├── postpone.py         soft blocking with a countdown
-│   │   ├── schedule.py         weekly schedule
-│   │   ├── stats.py            stats.json, metrics, CSV export
-│   │   ├── sites.py            website blocking via hosts
-│   │   ├── security.py         AppBlockerGuard, startup, diagnostics
-│   │   ├── lifecycle.py        startup, tray, timer, exit
-│   │   ├── i18n.py             RU/EN translations
-│   │   ├── logging_util.py     log to file and to the interface
-│   │   ├── paths.py            paths to config, logs, state
-│   │   ├── theme.py            palette and geometry
-│   │   └── admin.py            administrator rights
-│   │
-│   └── gui                     Flet interface
-│       ├── shell.py            window, navigation, log panel, routing
-│       ├── bootstrap.py        startup sequence
-│       ├── context.py          shared context and event loop bridge
-│       ├── common.py           control factories in the app's styling
-│       ├── animations.py       cursor spotlight, row fly-in
-│       ├── dialogs.py          modal windows
-│       └── tabs                one file per tab
-│           ├── monitor_tab.py
-│           ├── sites_tab.py
-│           ├── schedule_tab.py
-│           ├── stats_tab.py
-│           ├── settings_tab.py
-│           └── about_tab.py
+├── Program/                     "ready to run" copy of the program
+│   ├── AppBlocker.exe           ⚠ old Windows binary, kept as a historical artifact
+│   ├── AppBlockerGuard.exe      ⚠ old Windows binary — after a Linux build, replace both
+│   │                              with the extension-less `AppBlocker`/`AppBlockerGuard`
+│   ├── AppBlocker.desktop       XDG launcher template (app-menu entry); adjust
+│   │                              Exec=/Icon= to the real install path
+│   └── icon.png                 icon copy next to the built program
 │
-├── requirements.txt
-└── README.md
+├── installer_output/
+│   └── AppBlockerSetup.exe      Windows installer (NSIS/Inno) — not relevant to Linux,
+│                                  kept from the previous version, not produced by a Linux build
+│
+├── build/, dist/                PyInstaller working directories (build cache and output);
+│                                  regenerated on every build
+│
+└── Source/                      source code
+    ├── AppBlocker.py            entry point — just calls gui.bootstrap.run()
+    ├── AppBlocker.py.bak        archived copy of the monolithic AppBlocker.py (3327 lines)
+    │                              from before the appcore/gui split; unused by the program
+    ├── AppBlockerGuard.py       watchdog protection module, a separate process;
+    │                              does not import appcore — minimal dependencies for
+    │                              its own standalone PyInstaller build
+    ├── AppBlocker.spec          fuller build spec (run from inside Source/): bundles
+    │                              the Huninn font, the icon, and optionally the Flet client
+    ├── AppBlockerGuard.spec     build spec for the protection module
+    ├── config.json              settings file (sample/dev config)
+    ├── config.backup.json       its backup copy
+    ├── Huninn-Regular.ttf       the font bundled as the interface's default (see appcore/theme.py)
+    ├── logs/appblocker.log      log file (created by the program at runtime)
+    │
+    ├── appcore/                 all the logic, no interface
+    │   ├── __init__.py          empty, marks the package
+    │   ├── admin.py             root check (os.geteuid())
+    │   ├── config_store.py      config.json, admin password hash (PBKDF2), import/export
+    │   ├── i18n.py              RU/EN translation tables and language switching
+    │   ├── lifecycle.py         single instance (flock), window, tray, exit, timer
+    │   ├── logging_util.py      log to file and, optionally, to the interface widget
+    │   ├── paths.py             every path: XDG config/data, /etc/hosts, autostart,
+    │   │                          icon/font/Flet-client lookup
+    │   ├── postpone.py          "soft blocking" countdown dialog state, knows nothing
+    │   │                          about the interface
+    │   ├── processes.py         protected process list, rule matching, process
+    │   │                          monitoring and termination
+    │   ├── schedule.py          weekly blocking schedule
+    │   ├── security.py          AppBlockerGuard (start/watch), XDG `.desktop` autostart,
+    │   │                          diagnostics
+    │   ├── sites.py             website blocking via /etc/hosts (elevated through
+    │   │                          pkexec), DNS cache flush, browser process list
+    │   ├── state.py             the app's shared mutable state
+    │   ├── stats.py             statistics (stats.json), CSV export
+    │   └── theme.py             colors, radii, fonts
+    │
+    └── gui/                     the Flet interface
+        ├── __init__.py          empty
+        ├── animations.py        cursor spotlight, list row fly-in
+        ├── bootstrap.py         startup sequence (password, state recovery)
+        ├── common.py            control factories (buttons, fields, cards) in a shared style
+        ├── context.py           shared interface context, the bridge between threads
+        │                          and the Flet event loop
+        ├── dialogs.py           modal windows (password, confirmations, soft-block countdown)
+        ├── shell.py             main window: navigation, log panel, tab routing
+        └── tabs/                one file per tab
+            ├── __init__.py
+            ├── about_tab.py     "About" tab
+            ├── monitor_tab.py   "Monitoring" tab (process list, blocking)
+            ├── schedule_tab.py  "Schedule" tab
+            ├── settings_tab.py  "Settings" tab (autostart/diagnostics, config,
+            │                      modes, timer, protection)
+            ├── sites_tab.py     "Websites" tab
+            └── stats_tab.py     "Statistics" tab
 ```
 
-State files live in `%APPDATA%\AppBlocker`: `stats.json`, `language.json`, `security_state.json`. Settings (`config.json`) and the log sit next to the executable, so builds in different folders keep their own settings.
+State files live in `~/.local/share/AppBlocker` (XDG data): `stats.json`, `language.json`, `security_state.json`, the single-instance lock file. Settings (`config.json`) and the log sit next to the executable, so builds in different folders keep their own settings. Autostart lives separately, in `~/.config/autostart/*.desktop`.
+
+There are two `AppBlocker.spec` files (one at the repo root, one inside `Source/`) — that's not an accidental duplicate: the root one builds from the repo root with a minimal set of bundled data, while `Source/AppBlocker.spec` runs from inside `Source/` and bundles the font, the icon, and optionally the Flet client. Use whichever fits your build process — both build the same `AppBlocker.py`.
 
 ---
 
 # 📥 Quick Start
 
-1. Download the latest release.
+1. Download the latest release (the `Linux/` folder).
 2. Extract the archive.
-3. Run AppBlocker.exe.
+3. Run the `AppBlocker` binary (or the app-menu shortcut if you installed the `.desktop` file).
 4. Configure blocked applications and websites.
 5. Enable Protection Mode if required.
 6. Start monitoring.
@@ -654,22 +749,32 @@ State files live in `%APPDATA%\AppBlocker`: `stats.json`, `language.json`, `secu
 
 # ⚠ Important
 
-Protection Mode may require adding the App Blocker folder to your antivirus exclusions.
-
 The entire source code is open and available for inspection on GitHub.
 
 ---
 
-# 🛠 Build from Source
+# 🐧 App Blocker on Linux
+
+As of this version, App Blocker has been ported from Windows to Linux. Here is
+what changed compared to the Windows version.
+
+### System dependencies
+
+On Linux, `pystray`'s tray icon is drawn through GTK/AppIndicator — a system
+package, not a pip dependency:
+
+```bash
+# Debian / Ubuntu
+sudo apt install python3-gi gir1.2-ayatanaappindicator3-0.1
+```
+
+On distributions without that package the tray disables itself — the app
+minimizes the window instead of hiding to tray and keeps working.
 
 ### Requirements
 
 * Python 3.10+
-* flet (user interface)
-* psutil
-* pillow
-* pystray
-* pyinstaller
+* flet, psutil, pillow, pystray, pyinstaller (see `requirements.txt`)
 
 ```bash
 pip install -r requirements.txt
@@ -678,52 +783,53 @@ pip install -r requirements.txt
 ### Run from source
 
 ```bash
-cd Source && python AppBlocker.py
+cd Source && python3 AppBlocker.py
 ```
 
 ### Build
 
 ```bash
-pyinstaller Source/AppBlocker.spec
-```
-
-```bash
+pyinstaller AppBlocker.spec
 pyinstaller Source/AppBlockerGuard.spec
 ```
 
-### Flet client next to the exe
+### Flet client next to the binary
 
-The window is drawn by a separate program — `flet.exe` (about 100 MB). It is not
-part of the `flet-desktop` package: on first run Flet downloads it from GitHub into
-`%USERPROFILE%\.flet`. That does not work for a built release — App Blocker starts
-at Windows logon and is restarted by AppBlockerGuard, so it may come up with no
-internet connection.
-
-That is why the client ships as a `flet` folder next to `AppBlocker.exe`:
+The window is drawn by a separate program — the Flet client (about 100 MB). It
+is not part of the `flet-desktop` package: on first run Flet downloads it from
+GitHub into `~/.flet`. That does not work for a built release — App Blocker
+starts at login and is restarted by AppBlockerGuard, so it may come up with no
+internet connection. That is why the client ships as a `flet` folder next to
+the binary:
 
 ```text
-Program\
-  AppBlocker.exe
-  AppBlockerGuard.exe
-  icon.ico
-  flet\
-    flet.exe
+Program/
+  AppBlocker
+  AppBlockerGuard
+  icon.png
+  flet/
+    flet
     ...
 ```
 
 You can take it from the cache after the first run from source:
 
 ```bash
-xcopy /E /I "%USERPROFILE%\.flet\client\flet-desktop-full-<version>\flet" "Program\flet"
+cp -r ~/.flet/client/flet-desktop-light-<version>/flet Program/flet
 ```
 
-If shipping a folder is inconvenient, the client can be embedded into the exe
-itself. The file then grows by roughly 100 MB and is unpacked into temp on every
-launch:
+### Writing hosts and root rights
 
-```bash
-set BUNDLE_FLET_CLIENT=1 && pyinstaller Source/AppBlocker.spec
-```
+Website blocking edits `/etc/hosts`, which requires root. The app itself does
+not need to run as root: each hosts write elevates on its own through
+`pkexec` (a polkit password prompt) instead of requiring sudo at startup.
+
+### Autostart
+
+Instead of the Windows registry and Task Scheduler, AppBlocker and
+AppBlockerGuard autostart through XDG: `.desktop` files are placed in
+`~/.config/autostart/`. No elevated privileges are needed — the autostart file
+is written as the regular user.
 
 ---
 
