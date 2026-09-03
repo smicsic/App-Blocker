@@ -13,10 +13,12 @@ from appcore.logging_util import log
 from appcore.paths import (
     APP_DIR,
     AUTOSTART_DIR,
-    GUARD_EXE,
     GUARD_EXE_NAME,
     GUARD_STARTUP_NAME,
     APP_STARTUP_NAME,
+    app_command,
+    guard_command,
+    guard_target_exists,
 )
 
 
@@ -34,17 +36,24 @@ def _desktop_file_path(app_name):
     return os.path.join(AUTOSTART_DIR, f"{app_name.lower()}.desktop")
 
 
-def install_autostart_entry(app_name, exe_path):
-    """Пишет .desktop-файл автозапуска в ~/.config/autostart (XDG)."""
-    if not exe_path or not os.path.exists(exe_path):
+def install_autostart_entry(app_name, command):
+    """Пишет .desktop-файл автозапуска в ~/.config/autostart (XDG).
+
+    ``command`` — список argv (см. appcore.paths.app_command/guard_command):
+    собранный бинарник запускается одним элементом, а из исходников это
+    ``[python3, /путь/AppBlocker.py]`` — сам .py не исполняемый файл, поэтому
+    интерпретатор нужно указывать явно.
+    """
+    if not command or not command[-1] or not os.path.exists(command[-1]):
         return False
     try:
         os.makedirs(AUTOSTART_DIR, exist_ok=True)
+        exec_line = " ".join(f'"{part}"' for part in command)
         content = (
             "[Desktop Entry]\n"
             "Type=Application\n"
             f"Name={app_name}\n"
-            f'Exec="{exe_path}"\n'
+            f"Exec={exec_line}\n"
             "Terminal=false\n"
             "Hidden=false\n"
             "X-GNOME-Autostart-enabled=true\n"
@@ -110,17 +119,15 @@ def remove_from_startup_everywhere(app_name, process_name):
     return removed_any
 
 
-def ensure_startup_entry(app_name, exe_path):
-    return install_autostart_entry(app_name, exe_path)
+def ensure_startup_entry(app_name, command):
+    return install_autostart_entry(app_name, command)
 
 
 def ensure_app_startup_entries(on_status_update=None):
-    import sys
-    app_exe = sys.executable if getattr(sys, "frozen", False) else os.path.abspath(sys.argv[0])
-    app_ok = ensure_startup_entry(APP_STARTUP_NAME, app_exe)
+    app_ok = ensure_startup_entry(APP_STARTUP_NAME, app_command())
     secure_ok = True
     if state.SECURE_ENABLED:
-        secure_ok = ensure_startup_entry(GUARD_STARTUP_NAME, GUARD_EXE)
+        secure_ok = ensure_startup_entry(GUARD_STARTUP_NAME, guard_command())
     if app_ok and secure_ok:
         log(t("log_startup_configured_both"))
     elif app_ok:
@@ -151,7 +158,7 @@ def build_diagnostics():
     checks = [
         (t("diag_admin_rights"), is_admin()),
         (t("diag_app_exe_found"), os.path.exists(app_exe)),
-        (t("diag_guard_exe_found"), os.path.exists(GUARD_EXE)),
+        (t("diag_guard_exe_found"), guard_target_exists()),
         (t("diag_config_accessible"), os.path.exists(CONFIG_PATH)),
         (t("diag_password_hashed"), bool(state.ADMIN_PASSWORD_HASH and state.ADMIN_PASSWORD_SALT)),
         (t("diag_autostart_app"), is_autostart_registered(APP_STARTUP_NAME)),
@@ -183,10 +190,10 @@ def ensure_appblocker_guard():
         except Exception:
             pass
 
-    if os.path.exists(GUARD_EXE):
-        subprocess.Popen([GUARD_EXE], cwd=APP_DIR)
+    if guard_target_exists():
+        subprocess.Popen(guard_command(), cwd=APP_DIR)
         return True
-    log(t("log_guard_exe_not_found", path=GUARD_EXE))
+    log(t("log_guard_exe_not_found", path=guard_command()[-1]))
     return False
 
 
@@ -207,9 +214,9 @@ def watch_appblocker_guard():
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     continue
 
-            if not found and os.path.exists(GUARD_EXE) and state.watch_active:
+            if not found and guard_target_exists() and state.watch_active:
                 try:
-                    subprocess.Popen([GUARD_EXE], cwd=APP_DIR)
+                    subprocess.Popen(guard_command(), cwd=APP_DIR)
                     print("[Watch] AppBlockerGuard перезапущен")
                 except Exception as e:
                     print(f"[Watch] ❌ Ошибка запуска: {e}")

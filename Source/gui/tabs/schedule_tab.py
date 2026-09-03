@@ -2,7 +2,6 @@
 import flet as ft
 
 from appcore import state
-from appcore.admin import is_admin
 from appcore.config_store import save_config
 from appcore.i18n import register_retranslate, t
 from appcore.logging_util import log
@@ -114,9 +113,6 @@ def _apply_scheduled_sites(ctx):
     sites = load_blocked_sites()
     if not sites:
         return
-    if not is_admin():
-        log(t("log_schedule_sites_no_admin"))
-        return
     if apply_hosts_block(sites):
         state.SCHEDULE_APPLIED_SITES = True
         ctx.ui(ctx.refresh_sites_list)
@@ -130,9 +126,6 @@ def _clear_scheduled_sites(ctx):
         return
     if state.SITES_BLOCKED_MANUALLY or state.PERMANENT_LOCK:
         # Пользователь включал сайты сам — расписание это не отменяет.
-        return
-    if not is_admin():
-        log(t("log_schedule_sites_no_admin"))
         return
     if apply_hosts_block([]):
         state.SCHEDULE_APPLIED_SITES = False

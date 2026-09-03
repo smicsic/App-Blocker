@@ -4,11 +4,9 @@ import threading
 import flet as ft
 
 from appcore import state
-from appcore.admin import is_admin
 from appcore.config_store import save_config
 from appcore.i18n import register_retranslate, t
 from appcore.logging_util import log
-from appcore.paths import GUARD_EXE, GUARD_STARTUP_NAME
 from appcore.processes import (
     get_user_processes,
     is_blocked_program_running,
@@ -16,7 +14,7 @@ from appcore.processes import (
     normalize_process_name,
     sync_primary_process_name,
 )
-from appcore.security import ensure_app_startup_entries, ensure_appblocker_guard, ensure_startup_entry, start_guard_watch_thread
+from appcore.security import ensure_app_startup_entries, ensure_appblocker_guard, start_guard_watch_thread
 from appcore.stats import end_session, start_session
 from appcore.theme import PRIMARY, TEXT_MAIN, TEXT_MUTED
 from gui.animations import fly_in_rows
@@ -294,18 +292,10 @@ def start_monitoring(ctx):
     # ✅ СРАЗУ БЛОКИРУЕМ ВСЕ ТУМБЛЕРЫ НАВСЕГДА
     ctx.ui(ctx.lock_controls_after_start)
 
-    has_admin_rights = is_admin()
     if state.SECURE_ENABLED and ensure_appblocker_guard():
         log(t("log_guard_activated"))
 
-    if has_admin_rights:
-        ensure_app_startup_entries(on_status_update=ctx.update_startup_status_labels)
-    else:
-        if state.SECURE_ENABLED:
-            ensure_startup_entry(GUARD_STARTUP_NAME, GUARD_EXE)
-            log(t("log_monitoring_no_admin_with_guard"))
-        else:
-            log(t("log_monitoring_no_admin_no_guard"))
+    ensure_app_startup_entries(on_status_update=ctx.update_startup_status_labels)
 
     if state.SECURE_ENABLED:
         start_guard_watch_thread()

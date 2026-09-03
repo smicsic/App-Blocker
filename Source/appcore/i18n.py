@@ -140,8 +140,6 @@ add("log_program_removed", "🗑️ {program} удалён из списка б�
 add("log_program_added", "✅ {program} добавлен в список блокировки.", "✅ {program} added to the block list.")
 add("log_add_at_least_one_program", "❗ Для блокировки программ добавьте хотя бы одну программу. Сайты блокируются отдельно во вкладке «Сайты».", "❗ Add at least one program to start blocking. Websites are blocked separately on the Websites tab.")
 add("log_guard_activated", "🛡 AppBlockerGuard активирован", "🛡 AppBlockerGuard activated")
-add("log_monitoring_no_admin_with_guard", "ℹ️ Мониторинг программ запущен: AppBlockerGuard активирован, автозапуск настроен.", "ℹ️ Program monitoring started: AppBlockerGuard is active, autostart configured.")
-add("log_monitoring_no_admin_no_guard", "ℹ️ Мониторинг программ запущен без прав администратора: расширенный автозапуск пропущен.", "ℹ️ Program monitoring started without administrator rights: extended startup setup skipped.")
 add("log_monitoring_already_active", "⚠️ Мониторинг процесса '{process}' уже активен.", "⚠️ Monitoring for process '{process}' is already active.")
 add("log_permanent_lock_activated", "🔒 Вечная блокировка активирована — переключатели больше нельзя изменить.", "🔒 Permanent lock activated — switches can no longer be changed.")
 add("log_monitoring_started", "🚀 Мониторинг процесса '{process}' запущен.", "🚀 Monitoring for process '{process}' started.")
@@ -517,7 +515,6 @@ add("log_schedule_window_end_permanent", "🔒 Окно расписания з�
 add("log_schedule_needs_programs", "⚠️ Окно расписания началось, но список программ пуст — блокировать нечего.", "⚠️ A scheduled window started, but the program list is empty — nothing to block.")
 add("log_schedule_monitoring_started", "🚀 Мониторинг запущен по расписанию.", "🚀 Monitoring started by the schedule.")
 add("log_schedule_monitoring_stopped", "🛑 Мониторинг остановлен по расписанию.", "🛑 Monitoring stopped by the schedule.")
-add("log_schedule_sites_no_admin", "ℹ️ Сайты по расписанию не переключены: для записи hosts нужны права администратора.", "ℹ️ Scheduled site blocking skipped: writing hosts requires administrator rights.")
 
 # ==================== Вкладка «Статистика» ====================
 add("nav_stats", "Статистика", "Statistics")

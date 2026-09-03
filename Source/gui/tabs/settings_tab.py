@@ -1,6 +1,5 @@
 """Вкладка «Настройки»: автозапуск/диагностика, конфиг, режим совпадения, таймер, защита."""
 import datetime
-import os
 import re
 import threading
 
@@ -10,7 +9,7 @@ from appcore import state
 from appcore.config_store import export_config, import_config, save_config, save_security_state
 from appcore.i18n import register_retranslate, t
 from appcore.logging_util import log
-from appcore.paths import APP_STARTUP_NAME, GUARD_EXE, GUARD_STARTUP_NAME, LOG_PATH
+from appcore.paths import APP_STARTUP_NAME, GUARD_STARTUP_NAME, LOG_PATH, guard_target_exists
 from appcore.security import (
     enable_security_after_consent,
     is_autostart_registered,
@@ -42,7 +41,7 @@ def update_startup_status_labels(ctx):
     def work():
         app_ready = is_autostart_registered(APP_STARTUP_NAME)
         secure_ready = is_autostart_registered(GUARD_STARTUP_NAME)
-        guard_exists = os.path.exists(GUARD_EXE)
+        guard_exists = guard_target_exists()
 
         def apply():
             ctx.app_startup_status.value = (

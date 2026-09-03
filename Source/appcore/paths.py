@@ -116,6 +116,7 @@ SECURITY_STATE_PATH = os.path.join(STATE_DIR, "security_state.json")
 # пользователи экспортируют и импортируют, история блокировок там лишняя.
 STATS_PATH = os.path.join(STATE_DIR, "stats.json")
 GUARD_EXE = os.path.join(APP_DIR, GUARD_EXE_NAME)
+GUARD_SCRIPT = os.path.join(APP_DIR, "AppBlockerGuard.py")
 EXIT_SENTINEL = os.path.join(APP_DIR, "config.exit.lock")
 LOG_DIR = os.path.join(APP_DIR, "logs")
 LOG_PATH = os.path.join(LOG_DIR, "appblocker.log")
@@ -125,3 +126,32 @@ os.makedirs(LOG_DIR, exist_ok=True)
 
 # App Blocker открывается без запроса root. Действия, требующие root
 # (запись /etc/hosts), поднимают права точечно через pkexec.
+
+
+def app_command():
+    """Команда запуска самого AppBlocker для автозапуска/перезапуска.
+
+    В собранной версии ``sys.executable`` — это сам бинарник AppBlocker
+    (PyInstaller встраивает интерпретатор внутрь). При запуске из исходников
+    это системный python3, поэтому нужно явно указать ему запускаемый скрипт —
+    иначе .desktop-автозапуск получил бы ``Exec=/путь/AppBlocker.py``, а такой
+    файл сам по себе не исполняемый.
+    """
+    if getattr(sys, 'frozen', False):
+        return [sys.executable]
+    return [sys.executable, os.path.abspath(sys.argv[0])]
+
+
+def guard_command():
+    """Команда запуска AppBlockerGuard: собранный бинарник либо
+    ``<python> AppBlockerGuard.py`` при запуске из исходников (см. app_command)."""
+    if getattr(sys, 'frozen', False):
+        return [GUARD_EXE]
+    return [sys.executable, GUARD_SCRIPT]
+
+
+def guard_target_exists():
+    """True, если то, что запустит guard_command(), реально есть на диске."""
+    if getattr(sys, 'frozen', False):
+        return os.path.exists(GUARD_EXE)
+    return os.path.exists(GUARD_SCRIPT)
