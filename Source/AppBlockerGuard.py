@@ -3,15 +3,13 @@ import os
 import subprocess
 import sys
 import time
-import winreg
 
 import psutil
 
 
 CHECK_INTERVAL = 0.5
-APP_NAME = "AppBlocker.exe"
-TASK_NAME = "AppBlockerGuard"
-CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000 if os.name == "nt" else 0)
+APP_NAME = "AppBlocker"
+GUARD_NAME = "AppBlockerGuard"
 
 
 def base_dir():
@@ -28,6 +26,13 @@ def sentinel_path():
     return os.path.join(base_dir(), "config.exit.lock")
 
 
+def autostart_dir():
+    return os.path.join(
+        os.getenv("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config"),
+        "autostart",
+    )
+
+
 def get_status():
     if not os.path.exists(config_path()):
         return "EXIT"
@@ -41,41 +46,30 @@ def get_status():
 
 
 def add_to_startup():
-    exe_path = os.path.join(base_dir(), "AppBlockerGuard.exe")
+    """Пишет .desktop-автозапуск AppBlockerGuard в ~/.config/autostart (XDG)."""
+    exe_path = os.path.join(base_dir(), GUARD_NAME)
     if not os.path.exists(exe_path):
         print(f"[AppBlockerGuard] Startup skipped: {exe_path} not found")
         return
 
-    quoted_exe = f'"{exe_path}"'
     try:
-        result = subprocess.run(
-            [
-                "schtasks", "/Create",
-                "/TN", TASK_NAME,
-                "/TR", quoted_exe,
-                "/SC", "ONLOGON",
-                "/RL", "HIGHEST",
-                "/F",
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            creationflags=CREATE_NO_WINDOW,
-            text=True,
-            timeout=8,
+        target_dir = autostart_dir()
+        os.makedirs(target_dir, exist_ok=True)
+        desktop_path = os.path.join(target_dir, f"{GUARD_NAME.lower()}.desktop")
+        content = (
+            "[Desktop Entry]\n"
+            "Type=Application\n"
+            f"Name={GUARD_NAME}\n"
+            f'Exec="{exe_path}"\n'
+            "Terminal=false\n"
+            "Hidden=false\n"
+            "X-GNOME-Autostart-enabled=true\n"
         )
-        if result.returncode == 0:
-            print(f"[AppBlockerGuard] Scheduled task updated: {exe_path}")
-        else:
-            print(f"[AppBlockerGuard] Scheduled task failed: {result.stderr.strip()}")
+        with open(desktop_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        print(f"[AppBlockerGuard] Autostart entry updated: {desktop_path}")
     except Exception as e:
-        print(f"[AppBlockerGuard] Scheduled task error: {e}")
-
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_SET_VALUE) as reg_key:
-            winreg.SetValueEx(reg_key, TASK_NAME, 0, winreg.REG_SZ, quoted_exe)
-        print(f"[AppBlockerGuard] Registry startup updated: {exe_path}")
-    except Exception as e:
-        print(f"[AppBlockerGuard] Registry startup error: {e}")
+        print(f"[AppBlockerGuard] Autostart entry error: {e}")
 
 
 def is_exit_flag_set():
@@ -98,7 +92,7 @@ def restart_appblocker():
     app_path = os.path.join(base_dir(), APP_NAME)
     try:
         if os.path.exists(app_path):
-            subprocess.Popen([app_path, "--guard-restart"], cwd=base_dir(), creationflags=CREATE_NO_WINDOW)
+            subprocess.Popen([app_path, "--guard-restart"], cwd=base_dir())
             print(f"[AppBlockerGuard] AppBlocker restart: {time.strftime('%H:%M:%S')}")
         else:
             print(f"[AppBlockerGuard] AppBlocker not found: {app_path}")

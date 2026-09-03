@@ -1,15 +1,18 @@
 """Пути к ресурсам, конфигу и логам приложения."""
 import os
-import subprocess
 import sys
 
 
-def base_dir():
-    """Безопасный путь для AppBlocker — хранит всё в AppData, но иконку ищет рядом с exe."""
-    appdata_path = os.path.join(os.getenv("APPDATA"), "AppBlocker")
-    os.makedirs(appdata_path, exist_ok=True)
+def _xdg_dir(env_var, default_subdir):
+    """XDG Base Directory: берёт путь из переменной окружения или дефолт в $HOME."""
+    value = os.getenv(env_var)
+    if value:
+        return os.path.join(value, "AppBlocker")
+    return os.path.join(os.path.expanduser("~"), default_subdir, "AppBlocker")
 
-    # Для иконки и exe возвращаем путь программы
+
+def base_dir():
+    """Возвращает папку программы (рядом с exe/скриптом), где ищем иконку и ресурсы."""
     if getattr(sys, 'frozen', False):
         exe_dir = os.path.dirname(os.path.abspath(sys.executable))
     else:
@@ -40,15 +43,15 @@ FLET_CLIENT_DIR_NAME = "flet"
 
 
 def find_flet_client_dir():
-    """Ищет папку с flet.exe — клиентом Flet, который и рисует окно.
+    """Ищет папку с клиентом Flet, который и рисует окно.
 
     Клиент не входит в пакет ``flet-desktop``: при первом запуске тот скачивает
-    его (около 100 МБ) в ``%USERPROFILE%\\.flet`` с GitHub. Для собранной
-    программы это не годится — App Blocker поднимается при входе в Windows и
-    перезапускается AppBlockerGuard, то есть может стартовать без интернета.
+    его (около 100 МБ) в ``~/.flet`` с GitHub. Для собранной программы это не
+    годится — App Blocker поднимается при входе в систему и перезапускается
+    AppBlockerGuard, то есть может стартовать без интернета.
 
-    Поэтому клиент кладётся рядом с exe папкой ``flet`` (как остальные файлы
-    программы), а найденный путь передаётся Flet через ``FLET_VIEW_PATH``.
+    Поэтому клиент кладётся рядом с программой в папку ``flet`` (как остальные
+    файлы программы), а найденный путь передаётся Flet через ``FLET_VIEW_PATH``.
     Если папки нет, возвращаем None — тогда Flet скачает клиент сам, что
     нормально при запуске из исходников.
     """
@@ -59,55 +62,66 @@ def find_flet_client_dir():
         os.path.join(os.getcwd(), FLET_CLIENT_DIR_NAME),
     ]
     for path in candidates:
-        if path and os.path.isfile(os.path.join(path, "flet.exe")):
+        if path and os.path.isfile(os.path.join(path, "flet")):
             return path
     return None
 
 
 def find_icon_path():
     bundle_dir = getattr(sys, "_MEIPASS", None)
-    candidates = [
-        os.path.join(bundle_dir, "icon.ico") if bundle_dir else "",
-        os.path.join(base_dir(), "icon.ico"),
-        os.path.join(os.getcwd(), "icon.ico"),
-        os.path.join(os.getcwd(), "Program", "icon.ico"),
-        os.path.join(os.path.dirname(base_dir()), "icon.ico"),
-        os.path.join(os.path.dirname(base_dir()), "Program", "icon.ico"),
+    names = ("icon.png", "icon.ico")
+    search_dirs = [
+        bundle_dir,
+        base_dir(),
+        os.getcwd(),
+        os.path.join(os.getcwd(), "Program"),
+        os.path.dirname(base_dir()),
+        os.path.join(os.path.dirname(base_dir()), "Program"),
     ]
-    for path in candidates:
-        if os.path.exists(path):
-            return path
+    for name in names:
+        for directory in search_dirs:
+            if not directory:
+                continue
+            path = os.path.join(directory, name)
+            if os.path.exists(path):
+                return path
     return None
 
 
-RUN_SUBKEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-HOSTS_PATH = r"C:\Windows\System32\drivers\etc\hosts"
+HOSTS_PATH = "/etc/hosts"
 BLOCK_MARKER = "# AppBlocker managed"
 APP_STARTUP_NAME = "AppBlocker"
 GUARD_STARTUP_NAME = "AppBlockerGuard"
-LEGACY_GUARD_STARTUP_NAME = "SecureSystem"
-GUARD_EXE_NAME = "AppBlockerGuard.exe"
-LEGACY_GUARD_EXE_NAME = "SecureSystem.exe"
+GUARD_EXE_NAME = "AppBlockerGuard"
 
 if getattr(sys, 'frozen', False):
     APP_DIR = os.path.dirname(os.path.abspath(sys.executable))
 else:
     APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # appcore/ -> Source/
 
-STATE_DIR = os.path.join(os.getenv("APPDATA") or APP_DIR, "AppBlocker")
+# Конфиг и состояние — по стандарту XDG Base Directory: настройки в
+# $XDG_CONFIG_HOME (обычно ~/.config), данные и статистика в
+# $XDG_DATA_HOME (обычно ~/.local/share). Всё, что раньше жило в одном
+# %APPDATA%\AppBlocker, для простоты по-прежнему держим вместе — в STATE_DIR.
+STATE_DIR = _xdg_dir("XDG_DATA_HOME", ".local/share")
+AUTOSTART_DIR = os.path.join(
+    os.getenv("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config"),
+    "autostart",
+)
 WELCOME_MARKER_PATH = os.path.join(STATE_DIR, "welcome_seen.marker")
 CONFIG_PATH = os.path.join(APP_DIR, "config.json")
 CONFIG_BACKUP_PATH = os.path.join(APP_DIR, "config.backup.json")
 SECURITY_STATE_PATH = os.path.join(STATE_DIR, "security_state.json")
-# Статистика живёт в APPDATA рядом с остальным состоянием: config.json
+# Статистика живёт в STATE_DIR рядом с остальным состоянием: config.json
 # пользователи экспортируют и импортируют, история блокировок там лишняя.
 STATS_PATH = os.path.join(STATE_DIR, "stats.json")
 GUARD_EXE = os.path.join(APP_DIR, GUARD_EXE_NAME)
 EXIT_SENTINEL = os.path.join(APP_DIR, "config.exit.lock")
 LOG_DIR = os.path.join(APP_DIR, "logs")
 LOG_PATH = os.path.join(LOG_DIR, "appblocker.log")
+SINGLE_INSTANCE_LOCK_PATH = os.path.join(STATE_DIR, "appblocker.lock")
 os.makedirs(STATE_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
 
-# App Blocker opens without forced UAC. Protected actions check admin rights when used.
-CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000 if os.name == "nt" else 0)
+# App Blocker открывается без запроса root. Действия, требующие root
+# (запись /etc/hosts), поднимают права точечно через pkexec.

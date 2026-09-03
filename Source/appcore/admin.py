@@ -1,17 +1,17 @@
-"""Проверка прав администратора."""
-import ctypes
+"""Проверка прав root."""
+import os
 
 
 def is_admin():
-    """Проверяет, запущено ли приложение с правами администратора"""
+    """Проверяет, запущено ли приложение с правами root."""
     try:
-        return ctypes.windll.shell32.IsUserAnAdmin()
-    except Exception:
+        return os.geteuid() == 0
+    except AttributeError:
         return False
 
 
 def admin_warning_text(action_name):
     return (
-        f"{action_name} требует права администратора. "
-        "Обычный интерфейс открыт без UAC, но эту операцию нужно запускать от имени администратора."
+        f"{action_name} требует прав root. "
+        "Обычный интерфейс открыт без повышения прав, но эту операцию нужно подтвердить через pkexec."
     )

@@ -13,12 +13,11 @@ from appcore.logging_util import log
 from appcore.paths import APP_STARTUP_NAME, GUARD_EXE, GUARD_STARTUP_NAME, LOG_PATH
 from appcore.security import (
     enable_security_after_consent,
-    is_registry_startup_registered,
-    is_task_registered,
+    is_autostart_registered,
     run_diagnostics as security_run_diagnostics,
 )
 from appcore.lifecycle import check_timer
-from appcore.theme import ERROR, PRIMARY, SUCCESS, TEXT_MUTED, WARNING
+from appcore.theme import ERROR, PRIMARY, TEXT_MUTED
 from gui.common import (
     card,
     description,
@@ -37,19 +36,15 @@ from gui.common import (
 def update_startup_status_labels(ctx):
     """Обновляет три строки состояния защиты.
 
-    Проверки лезут в реестр и в планировщик задач, поэтому вся работа идёт в
-    фоновом потоке, а в цикл событий возвращается только запись результата.
+    Проверка лезет в файловую систему (~/.config/autostart), поэтому вся работа
+    идёт в фоновом потоке, а в цикл событий возвращается только запись результата.
     """
     def work():
-        app_task = is_task_registered(APP_STARTUP_NAME)
-        secure_task = is_task_registered(GUARD_STARTUP_NAME)
-        app_reg = is_registry_startup_registered(APP_STARTUP_NAME)
-        secure_reg = is_registry_startup_registered(GUARD_STARTUP_NAME)
+        app_ready = is_autostart_registered(APP_STARTUP_NAME)
+        secure_ready = is_autostart_registered(GUARD_STARTUP_NAME)
         guard_exists = os.path.exists(GUARD_EXE)
 
         def apply():
-            app_ready = app_task or app_reg
-            secure_ready = secure_task or secure_reg
             ctx.app_startup_status.value = (
                 t("settings_status_active") if app_ready else t("settings_status_not_configured")
             )
@@ -363,23 +358,8 @@ def _enable_security(ctx):
     ctx.ui(sync_secure_switch_ui, ctx)
 
 
-def check_defender_exclusions(ctx):
-    """Проверяет исключения Defender и показывает результат в диалоге."""
-    from appcore.security import check_antivirus_exception
-    from gui.dialogs import info_dialog
-
-    def work():
-        found, message = check_antivirus_exception()
-        ctx.ui(
-            info_dialog, ctx, t("dialog_check_exception_title"), message,
-            SUCCESS if found else WARNING,
-        )
-
-    ctx.run_bg(work)
-
-
 def build(ctx):
-    from appcore.security import copy_app_folder_path, open_antivirus_guide, open_defender_exclusions_settings
+    from appcore.security import copy_app_folder_path
 
     # ---------- Состояние защиты ----------
     startup_card_title = text(t("settings_protection_state_title"), size=16, bold=True)
@@ -513,21 +493,15 @@ def build(ctx):
     secure_state_label = text("", size=13, bold=True, color=TEXT_MUTED)
     secure_description = description(t("settings_secure_description"))
 
-    antivirus_guide_btn = secondary_button(t("settings_guide_btn"), open_antivirus_guide, width=150)
     copy_app_path_btn = secondary_button(t("settings_copy_path_btn"),
                                          lambda e: copy_app_folder_path(ctx), width=180)
-    check_defender_btn = secondary_button(t("settings_check_exclusion_btn"),
-                                          lambda e: check_defender_exclusions(ctx), width=200)
-    open_exclusions_settings_btn = secondary_button(t("settings_open_exclusions_btn"),
-                                                    open_defender_exclusions_settings, width=190)
 
     secure_card = card(ft.Column([
         secure_card_title,
         secure_switch,
         secure_state_label,
         secure_description,
-        ft.Row([antivirus_guide_btn, copy_app_path_btn, check_defender_btn,
-                open_exclusions_settings_btn], spacing=8, wrap=True, run_spacing=8),
+        ft.Row([copy_app_path_btn], spacing=8, wrap=True, run_spacing=8),
     ], spacing=10, tight=True))
 
     ctx.secure_switch = secure_switch
@@ -576,10 +550,7 @@ def build(ctx):
         timer_set_btn.content = t("settings_timer_set_btn")
         secure_card_title.value = t("settings_secure_title")
         secure_description.value = t("settings_secure_description")
-        antivirus_guide_btn.content = t("settings_guide_btn")
         copy_app_path_btn.content = t("settings_copy_path_btn")
-        check_defender_btn.content = t("settings_check_exclusion_btn")
-        open_exclusions_settings_btn.content = t("settings_open_exclusions_btn")
         sync_postpone_ui(ctx)
         sync_secure_switch_ui(ctx)
         update_startup_status_labels(ctx)

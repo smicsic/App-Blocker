@@ -3,13 +3,14 @@ import json
 import os
 import re
 import subprocess
+import tempfile
 
 import psutil
 
 from appcore.admin import is_admin
 from appcore.i18n import t
 from appcore.logging_util import log
-from appcore.paths import CONFIG_PATH, HOSTS_PATH, BLOCK_MARKER, CREATE_NO_WINDOW
+from appcore.paths import CONFIG_PATH, HOSTS_PATH, BLOCK_MARKER
 
 
 def normalize_site(site):
@@ -80,14 +81,22 @@ SITE_HOST_ALIASES = {
 }
 
 BROWSER_PROCESS_NAMES = {
-    "chrome.exe",
-    "msedge.exe",
-    "firefox.exe",
-    "brave.exe",
-    "opera.exe",
-    "opera_gx.exe",
-    "browser.exe",
-    "yandex.exe",
+    "chrome",
+    "google-chrome",
+    "google-chrome-stable",
+    "chromium",
+    "chromium-browser",
+    "firefox",
+    "firefox-esr",
+    "brave",
+    "brave-browser",
+    "opera",
+    "opera-stable",
+    "microsoft-edge",
+    "microsoft-edge-stable",
+    "yandex-browser",
+    "vivaldi",
+    "vivaldi-stable",
 }
 
 
@@ -170,16 +179,62 @@ def save_blocked_sites(sites):
         json.dump(data, f, indent=2)
 
 
+def _write_hosts_file(new_lines):
+    """Пишет новое содержимое hosts, поднимая права через pkexec при необходимости."""
+    content = "".join(new_lines)
+
+    if is_admin():
+        with open(HOSTS_PATH, "w", encoding="utf-8") as f:
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+        return True
+
+    tmp_fd, tmp_path = tempfile.mkstemp(prefix="appblocker-hosts-")
+    try:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+            f.write(content)
+            f.flush()
+            os.fsync(f.fileno())
+        result = subprocess.run(
+            ["pkexec", "install", "-m", "644", "-T", tmp_path, HOSTS_PATH],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=120,
+        )
+        if result.returncode != 0:
+            log(t("log_hosts_pkexec_failed", error=(result.stderr or "").strip()))
+            return False
+        return True
+    finally:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+
+
+def _flush_dns_cache():
+    for command in (
+        ["resolvectl", "flush-caches"],
+        ["systemd-resolve", "--flush-caches"],
+    ):
+        try:
+            subprocess.run(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=8
+            )
+        except Exception:
+            continue
+        else:
+            break
+
+
 def apply_hosts_block(sites):
     sites = normalize_sites(sites)
     try:
-        if not is_admin():
-            log(t("log_hosts_no_admin"))
-            return False
-
-        if os.path.exists(HOSTS_PATH) and not os.access(HOSTS_PATH, os.W_OK):
-            os.chmod(HOSTS_PATH, 0o666)
-
         if os.path.exists(HOSTS_PATH):
             with open(HOSTS_PATH, "r", encoding="utf-8", errors="ignore") as f:
                 lines = f.readlines()
@@ -195,25 +250,11 @@ def apply_hosts_block(sites):
                 new_lines.extend(hosts_entries_for_site(site))
             new_lines.append(f"{BLOCK_MARKER}: end\n")
 
-        with open(HOSTS_PATH, "w", encoding="utf-8") as f:
-            f.writelines(new_lines)
-            f.flush()
-            os.fsync(f.fileno())
+        if not _write_hosts_file(new_lines):
+            log(t("log_hosts_no_admin"))
+            return False
 
-        for command in (
-            ["ipconfig", "/flushdns"],
-            ["powershell", "-NoProfile", "-Command", "Clear-DnsClientCache"],
-        ):
-            try:
-                subprocess.run(
-                    command,
-                    creationflags=CREATE_NO_WINDOW,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    timeout=8
-                )
-            except Exception:
-                pass
+        _flush_dns_cache()
 
         with open(HOSTS_PATH, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()

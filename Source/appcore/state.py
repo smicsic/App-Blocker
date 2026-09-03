@@ -75,5 +75,4 @@ POSTPONE_LAST_ACTION = None
 POSTPONE_LOCK = Lock()
 
 EXIT_LOCK = Lock()
-SINGLE_INSTANCE_MUTEX_NAME = "Global\\AppBlockerMainInstance"
-_single_instance_mutex = None
+_single_instance_lock_file = None

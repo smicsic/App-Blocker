@@ -4,8 +4,8 @@
 доступны страница Flet и мост в её цикл событий. Трей остался на pystray — он
 живёт в своём потоке и от библиотеки интерфейса не зависит.
 """
-import ctypes
 import datetime
+import fcntl
 import os
 import threading
 import time
@@ -19,6 +19,7 @@ from appcore.paths import (
     APP_STARTUP_NAME,
     EXIT_SENTINEL,
     GUARD_STARTUP_NAME,
+    SINGLE_INSTANCE_LOCK_PATH,
     WELCOME_MARKER_PATH,
     base_dir,
     find_icon_path,
@@ -37,10 +38,18 @@ except Exception:
 
 
 def ensure_single_instance():
+    """Блокировка через flock на файле — держим дескриптор живым весь процесс.
+
+    Файл не удаляем: важна только эксклюзивная блокировка, а не факт
+    существования файла. Если процесс упадёт, ядро снимет блокировку само.
+    """
     try:
-        kernel32 = ctypes.windll.kernel32
-        state._single_instance_mutex = kernel32.CreateMutexW(None, False, state.SINGLE_INSTANCE_MUTEX_NAME)
-        return kernel32.GetLastError() != 183
+        lock_file = open(SINGLE_INSTANCE_LOCK_PATH, "w")
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        state._single_instance_lock_file = lock_file
+        return True
+    except OSError:
+        return False
     except Exception:
         return True
 
@@ -295,8 +304,8 @@ def exit_app_no_password(ctx):
 
     _remove_exit_sentinel_file()
 
-    remove_from_startup_everywhere(APP_STARTUP_NAME, "AppBlocker.exe")
-    remove_from_startup_everywhere(GUARD_STARTUP_NAME, "AppBlockerGuard.exe")
+    remove_from_startup_everywhere(APP_STARTUP_NAME, "appblocker")
+    remove_from_startup_everywhere(GUARD_STARTUP_NAME, "appblockerguard")
     stop_tray_icon()
     ctx.later(500, _destroy_window, ctx)
 
@@ -387,8 +396,8 @@ def _perform_exit(ctx):
     _remove_exit_sentinel_file()
 
     log(t("log_removing_from_startup"))
-    removed_app = remove_from_startup_everywhere(APP_STARTUP_NAME, "AppBlocker.exe")
-    removed_secure = remove_from_startup_everywhere(GUARD_STARTUP_NAME, "AppBlockerGuard.exe")
+    removed_app = remove_from_startup_everywhere(APP_STARTUP_NAME, "appblocker")
+    removed_secure = remove_from_startup_everywhere(GUARD_STARTUP_NAME, "appblockerguard")
     removed = removed_app or removed_secure
     log(t("log_startup_cleared") if removed else t("log_startup_entries_not_found"))
 

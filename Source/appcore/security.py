@@ -1,10 +1,8 @@
-"""Защита от завершения (AppBlockerGuard), автозапуск, диагностика, Defender."""
-import json
+"""Защита от завершения (AppBlockerGuard), автозапуск, диагностика."""
 import os
 import subprocess
 import threading
 import time
-import winreg
 
 import psutil
 
@@ -14,57 +12,82 @@ from appcore.i18n import t
 from appcore.logging_util import log
 from appcore.paths import (
     APP_DIR,
-    CREATE_NO_WINDOW,
+    AUTOSTART_DIR,
     GUARD_EXE,
     GUARD_EXE_NAME,
     GUARD_STARTUP_NAME,
-    LEGACY_GUARD_EXE_NAME,
-    LEGACY_GUARD_STARTUP_NAME,
     APP_STARTUP_NAME,
-    RUN_SUBKEY,
 )
-
-
-# schtasks и PowerShell пишут в кодировке консоли, а text=True декодирует их
-# вывод ANSI-кодировкой системы. Когда они не совпадают, поток-читатель
-# subprocess падает с UnicodeDecodeError и печатает трейсбек — хотя returncode,
-# который здесь и нужен, читается нормально. Поэтому декодируем «как получится».
-CONSOLE_DECODE_ERRORS = "replace"
 
 
 def is_guard_process_name(name, exe_path=""):
     name = (name or "").lower()
     exe_path = (exe_path or "").lower()
-    guard_names = (GUARD_EXE_NAME.lower(), LEGACY_GUARD_EXE_NAME.lower())
     return (
-        name in guard_names
-        or any(exe_path.endswith(guard_name) for guard_name in guard_names)
+        name == GUARD_EXE_NAME.lower()
+        or exe_path.endswith(GUARD_EXE_NAME.lower())
         or "appblockerguard" in name
-        or "securesystem" in name
     )
 
 
-def remove_from_startup_everywhere(app_name="AppBlockerGuard", exe_name=GUARD_EXE_NAME):
-    """Полностью удаляет приложение из автозагрузки Windows"""
-    deleted_any = False
+def _desktop_file_path(app_name):
+    return os.path.join(AUTOSTART_DIR, f"{app_name.lower()}.desktop")
+
+
+def install_autostart_entry(app_name, exe_path):
+    """Пишет .desktop-файл автозапуска в ~/.config/autostart (XDG)."""
+    if not exe_path or not os.path.exists(exe_path):
+        return False
+    try:
+        os.makedirs(AUTOSTART_DIR, exist_ok=True)
+        content = (
+            "[Desktop Entry]\n"
+            "Type=Application\n"
+            f"Name={app_name}\n"
+            f'Exec="{exe_path}"\n'
+            "Terminal=false\n"
+            "Hidden=false\n"
+            "X-GNOME-Autostart-enabled=true\n"
+        )
+        with open(_desktop_file_path(app_name), "w", encoding="utf-8") as f:
+            f.write(content)
+        return True
+    except Exception:
+        return False
+
+
+def remove_autostart_entry(app_name):
+    path = _desktop_file_path(app_name)
+    try:
+        if os.path.exists(path):
+            os.remove(path)
+            return True
+        return False
+    except Exception:
+        return False
+
+
+def is_autostart_registered(app_name):
+    return os.path.exists(_desktop_file_path(app_name))
+
+
+def remove_from_startup_everywhere(app_name, process_name):
+    """Удаляет .desktop-автозапуск и завершает все процессы с этим именем."""
+    removed_any = False
     current_pid = os.getpid()
+    process_name = (process_name or "").lower()
 
-    print(f"[Cleanup] 🧹 Начинаем очистку {app_name}...")
-
-    # 1) ⚡ ПРИНУДИТЕЛЬНО убить AppBlockerGuard несколько раз
-    print(f"[Cleanup] Завершаем все процессы {exe_name}...")
-    for attempt in range(5):  # Увеличено до 5 попыток
+    for attempt in range(5):
         killed = False
         try:
             for p in psutil.process_iter(['name', 'pid']):
                 try:
-                    n = (p.info.get('name') or '').lower()
                     if p.info.get('pid') == current_pid:
                         continue
-                    if n == exe_name.lower():
-                        print(f"[Cleanup] Завершаю PID {p.info['pid']} (попытка {attempt + 1})")
+                    n = (p.info.get('name') or '').lower()
+                    if n == process_name:
                         try:
-                            p.kill()  # Жёсткое завершение
+                            p.kill()
                             killed = True
                         except psutil.AccessDenied:
                             try:
@@ -74,156 +97,26 @@ def remove_from_startup_everywhere(app_name="AppBlockerGuard", exe_name=GUARD_EX
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     pass
         except Exception as e:
-            print(f"[Cleanup] Ошибка при завершении процесса: {e}")
+            log(t("log_process_cleanup_error", error=e))
 
         if killed:
-            time.sleep(0.5)  # Уменьшено время ожидания
+            time.sleep(0.5)
         else:
             break
 
-    # 2) 🧹 Удаляем из реестра
-    print("[Cleanup] Удаляем из реестра...")
+    if remove_autostart_entry(app_name):
+        removed_any = True
 
-    hives = [
-        (winreg.HKEY_CURRENT_USER, "HKCU"),
-        (winreg.HKEY_LOCAL_MACHINE, "HKLM")
-    ]
-
-    run_paths = [
-        r"Software\Microsoft\Windows\CurrentVersion\Run",
-        r"Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Run"
-    ]
-
-    for hive, hive_name in hives:
-        for run_path in run_paths:
-            try:
-                # Пробуем без флагов разрядности
-                try:
-                    with winreg.OpenKey(hive, run_path, 0, winreg.KEY_SET_VALUE) as k:
-                        try:
-                            winreg.DeleteValue(k, app_name)
-                            print(f"[Cleanup] ✅ Удалён из {hive_name}\\{run_path}")
-                            deleted_any = True
-                        except FileNotFoundError:
-                            pass
-                except PermissionError:
-                    print(f"[Cleanup] ⚠️ Нет прав для {hive_name}\\{run_path}")
-
-                # Пробуем с флагами разрядности
-                for view in [winreg.KEY_WOW64_64KEY, winreg.KEY_WOW64_32KEY]:
-                    try:
-                        access = winreg.KEY_SET_VALUE | view
-                        with winreg.OpenKey(hive, run_path, 0, access) as k:
-                            try:
-                                winreg.DeleteValue(k, app_name)
-                                print(f"[Cleanup] ✅ Удалён из {hive_name}\\{run_path} (view={view})")
-                                deleted_any = True
-                            except FileNotFoundError:
-                                pass
-                    except (PermissionError, OSError):
-                        pass
-            except Exception as e:
-                print(f"[Cleanup] ⚠️ Ошибка при работе с реестром: {e}")
-
-    # 3) 🗑️ Удаляем ярлыки
-    print("[Cleanup] Удаляем ярлыки...")
-
-    startup_folders = [
-        os.path.join(os.getenv("APPDATA") or "", r"Microsoft\Windows\Start Menu\Programs\Startup"),
-        os.path.join(os.getenv("PROGRAMDATA") or "", r"Microsoft\Windows\Start Menu\Programs\Startup")
-    ]
-
-    for folder in startup_folders:
-        if folder and os.path.isdir(folder):
-            try:
-                for filename in os.listdir(folder):
-                    if filename.lower().startswith(app_name.lower()) and filename.lower().endswith(".lnk"):
-                        shortcut_path = os.path.join(folder, filename)
-                        try:
-                            os.chmod(shortcut_path, 0o666)
-                        except Exception:
-                            pass
-                        try:
-                            os.remove(shortcut_path)
-                            print(f"[Cleanup] ✅ Удалён ярлык: {shortcut_path}")
-                            deleted_any = True
-                        except Exception as e:
-                            print(f"[Cleanup] ⚠️ Не удалось удалить {shortcut_path}: {e}")
-            except Exception as e:
-                print(f"[Cleanup] ⚠️ Ошибка при обходе {folder}: {e}")
-
-    # 4) 🗓️ Удаляем задачу планировщика
-    print("[Cleanup] Удаляем задачу планировщика...")
-    try:
-        result = subprocess.run(
-            ["schtasks", "/Delete", "/TN", app_name, "/F"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            creationflags=CREATE_NO_WINDOW,
-            text=True,
-            errors=CONSOLE_DECODE_ERRORS,
-            timeout=5
-        )
-        if result.returncode == 0:
-            print(f"[Cleanup] ✅ Задача '{app_name}' удалена")
-            deleted_any = True
-    except Exception as e:
-        print(f"[Cleanup] ⚠️ Ошибка удаления задачи: {e}")
-
-    print(f"[Cleanup] {'✅ Очистка завершена' if deleted_any else 'ℹ️ Записи не найдены'}")
-    return deleted_any
-
-
-def quote_task_path(path):
-    return f'"{path}"'
-
-
-def install_startup_task(task_name, exe_path):
-    if not exe_path or not os.path.exists(exe_path):
-        return False
-    try:
-        result = subprocess.run(
-            [
-                "schtasks", "/Create",
-                "/TN", task_name,
-                "/TR", quote_task_path(exe_path),
-                "/SC", "ONLOGON",
-                "/RL", "HIGHEST",
-                "/F",
-            ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            creationflags=CREATE_NO_WINDOW,
-            text=True,
-            errors=CONSOLE_DECODE_ERRORS,
-            timeout=8
-        )
-        return result.returncode == 0
-    except Exception:
-        return False
-
-
-def install_startup_registry(app_name, exe_path):
-    if not exe_path or not os.path.exists(exe_path):
-        return False
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_SUBKEY, 0, winreg.KEY_SET_VALUE) as reg_key:
-            winreg.SetValueEx(reg_key, app_name, 0, winreg.REG_SZ, quote_task_path(exe_path))
-        return True
-    except Exception:
-        return False
+    return removed_any
 
 
 def ensure_startup_entry(app_name, exe_path):
-    task_ok = install_startup_task(app_name, exe_path)
-    reg_ok = install_startup_registry(app_name, exe_path)
-    return task_ok or reg_ok
+    return install_autostart_entry(app_name, exe_path)
 
 
 def ensure_app_startup_entries(on_status_update=None):
     import sys
     app_exe = sys.executable if getattr(sys, "frozen", False) else os.path.abspath(sys.argv[0])
-    remove_from_startup_everywhere(LEGACY_GUARD_STARTUP_NAME, LEGACY_GUARD_EXE_NAME)
     app_ok = ensure_startup_entry(APP_STARTUP_NAME, app_exe)
     secure_ok = True
     if state.SECURE_ENABLED:
@@ -237,31 +130,6 @@ def ensure_app_startup_entries(on_status_update=None):
     if on_status_update is not None:
         on_status_update()
     return app_ok and secure_ok
-
-
-def is_task_registered(task_name):
-    try:
-        result = subprocess.run(
-            ["schtasks", "/Query", "/TN", task_name],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            creationflags=CREATE_NO_WINDOW,
-            text=True,
-            errors=CONSOLE_DECODE_ERRORS,
-            timeout=5
-        )
-        return result.returncode == 0
-    except Exception:
-        return False
-
-
-def is_registry_startup_registered(app_name):
-    try:
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_SUBKEY, 0, winreg.KEY_READ) as reg_key:
-            winreg.QueryValueEx(reg_key, app_name)
-        return True
-    except Exception:
-        return False
 
 
 def is_process_running_by_name(exe_name):
@@ -286,10 +154,8 @@ def build_diagnostics():
         (t("diag_guard_exe_found"), os.path.exists(GUARD_EXE)),
         (t("diag_config_accessible"), os.path.exists(CONFIG_PATH)),
         (t("diag_password_hashed"), bool(state.ADMIN_PASSWORD_HASH and state.ADMIN_PASSWORD_SALT)),
-        (t("diag_task_app"), is_task_registered(APP_STARTUP_NAME)),
-        (t("diag_task_guard"), is_task_registered(GUARD_STARTUP_NAME)),
-        (t("diag_registry_app"), is_registry_startup_registered(APP_STARTUP_NAME)),
-        (t("diag_registry_guard"), is_registry_startup_registered(GUARD_STARTUP_NAME)),
+        (t("diag_autostart_app"), is_autostart_registered(APP_STARTUP_NAME)),
+        (t("diag_autostart_guard"), is_autostart_registered(GUARD_STARTUP_NAME)),
         (t("diag_guard_running"), is_process_running_by_name(GUARD_EXE_NAME)),
         (t("diag_hosts_access"), os.path.exists(HOSTS_PATH) and os.access(HOSTS_PATH, os.W_OK)),
     ]
@@ -308,8 +174,6 @@ def run_diagnostics(on_status_update=None):
 
 def ensure_appblocker_guard():
     """Запускает AppBlockerGuard из той же папки, если его нет."""
-    from appcore.paths import base_dir
-
     for proc in psutil.process_iter(['name', 'exe']):
         try:
             name = (proc.info.get('name') or '').lower()
@@ -320,7 +184,7 @@ def ensure_appblocker_guard():
             pass
 
     if os.path.exists(GUARD_EXE):
-        subprocess.Popen([GUARD_EXE], cwd=base_dir(), creationflags=CREATE_NO_WINDOW)
+        subprocess.Popen([GUARD_EXE], cwd=APP_DIR)
         return True
     log(t("log_guard_exe_not_found", path=GUARD_EXE))
     return False
@@ -328,8 +192,6 @@ def ensure_appblocker_guard():
 
 def watch_appblocker_guard():
     """Следит за AppBlockerGuard и перезапускает его при необходимости"""
-    from appcore.paths import base_dir
-
     print("[Watch] Мониторинг AppBlockerGuard запущен")
 
     while state.watch_active and not state.shutdown_event.is_set():
@@ -347,7 +209,7 @@ def watch_appblocker_guard():
 
             if not found and os.path.exists(GUARD_EXE) and state.watch_active:
                 try:
-                    subprocess.Popen([GUARD_EXE], cwd=base_dir(), creationflags=CREATE_NO_WINDOW)
+                    subprocess.Popen([GUARD_EXE], cwd=APP_DIR)
                     print("[Watch] AppBlockerGuard перезапущен")
                 except Exception as e:
                     print(f"[Watch] ❌ Ошибка запуска: {e}")
@@ -372,34 +234,6 @@ def get_app_folder_path():
     return os.path.abspath(base_dir())
 
 
-def open_antivirus_guide():
-    import webbrowser
-    from appcore.theme import ANTIVIRUS_GUIDE_URL
-
-    try:
-        webbrowser.open(ANTIVIRUS_GUIDE_URL)
-    except Exception as e:
-        log(t("log_guide_open_failed", error=e))
-
-
-def open_defender_exclusions_settings():
-    from appcore.theme import (
-        DEFENDER_EXCLUSIONS_URI,
-        DEFENDER_THREAT_SETTINGS_URI,
-        WINDOWS_SECURITY_SETTINGS_URI,
-    )
-
-    for uri in (DEFENDER_EXCLUSIONS_URI, DEFENDER_THREAT_SETTINGS_URI, WINDOWS_SECURITY_SETTINGS_URI):
-        try:
-            os.startfile(uri)
-            log(t("log_defender_exclusions_opened"))
-            return True
-        except Exception:
-            continue
-    log(t("log_defender_exclusions_open_failed"))
-    return False
-
-
 def copy_app_folder_path(ctx, on_done=None):
     """Копирует путь к папке программы в буфер обмена.
 
@@ -422,110 +256,6 @@ def copy_app_folder_path(ctx, on_done=None):
     ctx.run_async(copy)
 
 
-def get_defender_exclusion_paths():
-    if os.name != "nt":
-        return [], None
-    command = [
-        "powershell",
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-Command",
-        "(Get-MpPreference).ExclusionPath | ConvertTo-Json -Compress",
-    ]
-    try:
-        result = subprocess.run(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            errors=CONSOLE_DECODE_ERRORS,
-            timeout=10,
-            creationflags=CREATE_NO_WINDOW,
-        )
-    except Exception as e:
-        return None, str(e)
-
-    if result.returncode != 0:
-        return None, (result.stderr or result.stdout or "Get-MpPreference returned an error").strip()
-
-    raw = (result.stdout or "").strip()
-    if raw.startswith('"') and raw.endswith('"'):
-        try:
-            unquoted_raw = json.loads(raw)
-        except json.JSONDecodeError:
-            unquoted_raw = raw.strip('"')
-        if isinstance(unquoted_raw, str) and "must be an administrator" in unquoted_raw.lower():
-            return None, "admin_required"
-    if "must be an administrator" in raw.lower():
-        return None, "admin_required"
-    if not raw or raw == "null":
-        return [], None
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        data = raw
-    if isinstance(data, str):
-        return [data], None
-    if isinstance(data, list):
-        return [str(item) for item in data if item], None
-    return [], None
-
-
-def is_path_covered_by_exclusion(app_path, exclusions):
-    def normalize_path(value):
-        value = os.path.expandvars(str(value)).strip().strip('"')
-        value = value.replace("/", "\\")
-        value = os.path.abspath(value)
-        try:
-            value = os.path.realpath(value)
-        except Exception:
-            pass
-        return os.path.normcase(value).rstrip("\\/")
-
-    app_path = normalize_path(app_path)
-    for exclusion in exclusions or []:
-        if not exclusion:
-            continue
-        exclusion_path = normalize_path(exclusion)
-        if (
-            app_path == exclusion_path
-            or app_path.startswith(exclusion_path + os.sep)
-            or exclusion_path.startswith(app_path + os.sep)
-        ):
-            return True
-    return False
-
-
-def check_antivirus_exception():
-    """Проверяет, добавлена ли папка App Blocker в исключения Defender.
-
-    Возвращает пару ``(найдено, сообщение)`` — показать результат решает
-    вызывающий. Раньше функция сама настраивала переданный ей виджет и открывала
-    диалог; теперь она ничего не знает об интерфейсе и её можно звать из
-    фонового потока, а опрос Defender через PowerShell идёт секунды.
-    """
-    app_path = get_app_folder_path()
-    exclusions, error = get_defender_exclusion_paths()
-    if exclusions is None:
-        if error == "admin_required":
-            message = t("defender_admin_required")
-        else:
-            message = t("defender_check_unavailable")
-        if error:
-            log(t("log_defender_check_failed", error=error))
-        found = False
-    elif is_path_covered_by_exclusion(app_path, exclusions):
-        message = t("defender_found")
-        found = True
-    else:
-        message = t("defender_not_found")
-        found = False
-
-    log(message)
-    return found, message
-
-
 def enable_security_after_consent(on_status_update=None):
     state.SECURE_ENABLED = True
     state.SECURITY_WARNING_SEEN = True
@@ -536,11 +266,7 @@ def enable_security_after_consent(on_status_update=None):
     if ensure_appblocker_guard():
         log(t("log_guard_activated_generic"))
 
-    if is_admin():
-        ensure_app_startup_entries(on_status_update=on_status_update)
-    else:
-        ensure_startup_entry(GUARD_STARTUP_NAME, GUARD_EXE)
-        log(t("log_protection_enabled_registry_only"))
+    ensure_app_startup_entries(on_status_update=on_status_update)
 
     start_guard_watch_thread()
 
