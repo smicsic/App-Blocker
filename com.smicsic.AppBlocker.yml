@@ -1,0 +1,57 @@
+app-id: com.smicsic.AppBlocker
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+command: AppBlocker
+
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --socket=system-bus
+  - --system-talk-name=org.freedesktop.PolicyKit1
+  - --talk-name=org.freedesktop.Notifications
+
+modules:
+  - python3-deps.json
+
+  - name: libsecret-stub
+    buildsystem: simple
+    build-commands:
+      - echo 'void secret_password_store_sync(){} void secret_password_lookup_sync(){} void secret_password_clear_sync(){} void secret_password_free(){}' > stub.c
+      - gcc -shared -fPIC -o libsecret-1.so.0 stub.c
+      - install -Dm755 libsecret-1.so.0 /app/lib/libsecret-1.so.0
+
+  - name: appblocker
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/lib/appblocker
+      - cp -r Source/appcore /app/lib/appblocker/
+      - cp -r Source/gui /app/lib/appblocker/
+      - install -Dm755 Source/AppBlocker.py /app/lib/appblocker/AppBlocker.py
+      - install -Dm644 icon.png /app/share/icons/hicolor/256x256/apps/com.smicsic.AppBlocker.png
+      - install -Dm644 metainfo/com.smicsic.AppBlocker.metainfo.xml /app/share/metainfo/com.smicsic.AppBlocker.metainfo.xml
+      - cp -r flet-client /app/lib/appblocker/flet
+      - mkdir -p /app/share/applications
+      - |
+        cat > /app/share/applications/com.smicsic.AppBlocker.desktop << 'DESKTOPEOF'
+        [Desktop Entry]
+        Name=App Blocker
+        Comment=Блокировщик приложений и сайтов
+        Exec=AppBlocker
+        Icon=com.smicsic.AppBlocker
+        Type=Application
+        Categories=Utility;
+        DESKTOPEOF
+      - |
+        cat > /app/bin/AppBlocker << 'RUNEOF'
+        #!/bin/sh
+        cd /app/lib/appblocker
+        export FLET_VIEW_PATH=/app/lib/appblocker/flet/flet/flet
+        exec python3 AppBlocker.py "$@"
+        RUNEOF
+      - chmod +x /app/bin/AppBlocker
+    sources:
+      - type: dir
+        path: .

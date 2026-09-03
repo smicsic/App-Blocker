@@ -94,7 +94,9 @@ APP_STARTUP_NAME = "AppBlocker"
 GUARD_STARTUP_NAME = "AppBlockerGuard"
 GUARD_EXE_NAME = "AppBlockerGuard"
 
-if getattr(sys, 'frozen', False):
+if os.environ.get("FLATPAK_ID"):
+    APP_DIR = os.path.join(os.path.expanduser("~/.var/app"), os.environ["FLATPAK_ID"])
+elif getattr(sys, 'frozen', False):
     APP_DIR = os.path.dirname(os.path.abspath(sys.executable))
 else:
     APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # appcore/ -> Source/
