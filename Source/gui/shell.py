@@ -38,7 +38,7 @@ from appcore.theme import (
 from gui.animations import spotlight_surface
 from gui.common import card, secondary_button, stretch_column, sunken_box, text, title
 from gui.context import AppContext
-from gui.tabs import about_tab, monitor_tab, schedule_tab, settings_tab, sites_tab, stats_tab
+from gui.tabs import about_tab, monitor_tab, remote_admin_tab, schedule_tab, settings_tab, sites_tab, stats_tab
 
 NAV_COLLAPSED_WIDTH = 64
 NAV_EXPANDED_WIDTH = 205
@@ -56,6 +56,7 @@ NAV_ITEMS = (
     ("schedule", "nav_schedule", ft.Icons.CALENDAR_MONTH_OUTLINED, "schedule_title"),
     ("stats", "nav_stats", ft.Icons.INSIGHTS_OUTLINED, "stats_title"),
     ("settings", "nav_settings", ft.Icons.SETTINGS_OUTLINED, "settings_title"),
+    ("remote_admin", "nav_remote_admin", ft.Icons.ADMIN_PANEL_SETTINGS_OUTLINED, "remote_admin_title"),
     ("about", "nav_about", ft.Icons.INFO_OUTLINE, "about_title"),
 )
 
@@ -258,6 +259,7 @@ def build_main_window(page):
         "schedule": schedule_tab.build(ctx),
         "stats": stats_tab.build(ctx),
         "settings": settings_tab.build(ctx),
+        "remote_admin": remote_admin_tab.build(ctx),
         "about": about_tab.build(ctx),
     }
     frame_titles = {name: title_key for name, _, _, title_key in NAV_ITEMS}

@@ -111,3 +111,13 @@ os.makedirs(LOG_DIR, exist_ok=True)
 
 # App Blocker opens without forced UAC. Protected actions check admin rights when used.
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000 if os.name == "nt" else 0)
+
+# ---------- Remote Admin ----------
+# Пароль вкладки Remote Admin хранится отдельно от config.json — в
+# %APPDATA%\AppBlocker\Pass (тот же путь и формат, что использует
+# AppBlocker_Client для своего пароля выхода).
+REMOTE_ADMIN_CONFIG_DIR = os.path.join(os.getenv("APPDATA") or APP_DIR, "AppBlocker")
+ADMIN_PASS_PATH = os.path.join(REMOTE_ADMIN_CONFIG_DIR, "Pass")
+TRUSTED_CLIENTS_PATH = os.path.join(REMOTE_ADMIN_CONFIG_DIR, "remote_admin_clients.json")
+REMOTE_ADMIN_SETTINGS_PATH = os.path.join(REMOTE_ADMIN_CONFIG_DIR, "remote_admin_settings.json")
+os.makedirs(REMOTE_ADMIN_CONFIG_DIR, exist_ok=True)

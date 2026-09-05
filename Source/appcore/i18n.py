@@ -721,3 +721,74 @@ add("log_guard_monitoring_already_active", "ℹ️ Мониторинг AppBlock
 add("log_guard_watch_started", "👁️ Мониторинг AppBlockerGuard запущен", "👁️ AppBlockerGuard monitoring started")
 add("log_guard_watch_started_startup", "👁️ Мониторинг AppBlockerGuard активирован", "👁️ AppBlockerGuard monitoring activated")
 add("log_guard_watch_started_sites", "👁️ Мониторинг AppBlockerGuard запущен для сайтов", "👁️ AppBlockerGuard monitoring started for websites")
+
+# ==================== Remote Admin ====================
+add("nav_remote_admin", "Remote Admin", "Remote Admin")
+add("remote_admin_title", "Remote Admin", "Remote Admin")
+
+add("remote_admin_password_hint", "Пароль", "Password")
+add("remote_admin_set_password_title", "Задайте пароль вкладки Remote Admin", "Set a password for the Remote Admin tab")
+add("remote_admin_set_password_description",
+    "Этот пароль защищает доступ к удалённому администрированию. Он не связан с паролем выхода из AppBlocker.",
+    "This password protects access to remote administration. It is separate from the AppBlocker exit password.")
+add("remote_admin_enter_password_title", "Введите пароль Remote Admin", "Enter the Remote Admin password")
+add("remote_admin_enter_password_description", "Вкладка защищена паролем — введите его, чтобы продолжить.",
+    "This tab is password-protected — enter it to continue.")
+add("remote_admin_set_password_btn", "Задать пароль", "Set password")
+add("remote_admin_unlock_btn", "Войти", "Unlock")
+add("remote_admin_forgot_password_btn", "Забыли пароль?", "Forgot password?")
+add("remote_admin_forgot_password_title", "Сбросить пароль?", "Reset password?")
+add("remote_admin_forgot_password_confirm",
+    "Файл пароля Remote Admin будет удалён, и при следующем входе понадобится задать новый пароль. Продолжить?",
+    "The Remote Admin password file will be deleted, and you will need to set a new password next time. Continue?")
+add("remote_admin_password_too_short", "Пароль должен быть не короче 4 символов.", "Password must be at least 4 characters.")
+add("remote_admin_wrong_password", "Неверный пароль.", "Wrong password.")
+
+add("remote_admin_mode_title", "Режим подключения", "Connection mode")
+add("remote_admin_mode_description",
+    "Локальный режим ищет клиентов в этой сети напрямую. Глобальный — через relay-сервер, для подключения через интернет.",
+    "Local mode finds clients directly on this network. Global mode goes through a relay server, for connecting over the internet.")
+add("remote_admin_mode_wan_label", "Глобальный (через интернет)", "Global (over the internet)")
+add("remote_admin_relay_label", "Адрес relay-сервера:", "Relay server address:")
+add("remote_admin_relay_hint", "wss://your-relay.example.com/ws", "wss://your-relay.example.com/ws")
+
+add("remote_admin_clients_title", "Клиенты", "Clients")
+add("remote_admin_scan_btn", "🔍 Сканировать сеть", "🔍 Scan network")
+add("remote_admin_manual_ip_hint", "IP клиента", "Client IP")
+add("remote_admin_manual_add_btn", "Добавить по IP", "Add by IP")
+add("remote_admin_clients_count", "Клиентов найдено: {count}", "Clients found: {count}")
+add("remote_admin_clients_empty", "Клиенты не найдены. Отсканируйте сеть или добавьте по IP.",
+    "No clients found. Scan the network or add one by IP.")
+add("remote_admin_status_online", "онлайн", "online")
+add("remote_admin_status_offline", "офлайн", "offline")
+
+add("remote_admin_commands_title", "Команды", "Commands")
+add("remote_admin_commands_description",
+    "Выберите клиента (или «Все клиенты») и, для блокировки/разблокировки, укажите имя процесса.",
+    "Pick a client (or \"All clients\") and, for block/unblock, the process name.")
+add("remote_admin_target_client_label", "Клиент:", "Client:")
+add("remote_admin_all_clients_option", "Все клиенты", "All clients")
+add("remote_admin_target_hint", "Имя процесса, например firefox", "Process name, e.g. firefox")
+add("remote_admin_block_btn", "🚫 Заблокировать", "🚫 Block")
+add("remote_admin_unblock_btn", "✅ Разблокировать", "✅ Unblock")
+add("remote_admin_status_btn", "📊 Статус", "📊 Status")
+add("remote_admin_ping_btn", "📶 Ping", "📶 Ping")
+
+add("log_remote_admin_password_set", "🔐 Пароль вкладки Remote Admin задан.", "🔐 Remote Admin tab password set.")
+add("log_remote_admin_password_reset", "🔐 Пароль вкладки Remote Admin сброшен.", "🔐 Remote Admin tab password reset.")
+add("log_remote_admin_scanning", "🔍 Сканирование сети на клиентов AppBlocker...", "🔍 Scanning the network for AppBlocker clients...")
+add("log_remote_admin_scan_done", "🔍 Сканирование завершено: найдено {count}", "🔍 Scan finished: {count} found")
+add("log_remote_admin_manual_added", "✅ Клиент {client_id} ({ip}) добавлен вручную.", "✅ Client {client_id} ({ip}) added manually.")
+add("log_remote_admin_manual_add_failed", "⚠️ Не удалось добавить клиента {ip}: {message}", "⚠️ Failed to add client {ip}: {message}")
+add("log_remote_admin_target_required", "❗ Укажите имя процесса для блокировки/разблокировки.", "❗ Enter a process name to block/unblock.")
+add("log_remote_admin_no_clients", "⚠️ Нет выбранных клиентов. Сначала найдите или добавьте клиента.",
+    "⚠️ No clients selected. Find or add a client first.")
+add("log_remote_admin_relay_missing", "⚠️ Укажите адрес relay-сервера для глобального режима.", "⚠️ Enter the relay server address for global mode.")
+add("log_remote_admin_command_ok", "✅ {client}: {action} — {message}", "✅ {client}: {action} — {message}")
+add("log_remote_admin_command_denied", "🚫 {client}: подключение отклонено пользователем клиента.", "🚫 {client}: connection was declined on the client side.")
+add("log_remote_admin_command_failed", "⚠️ {client}: {action} не выполнено — {message}", "⚠️ {client}: {action} failed — {message}")
+add("log_remote_admin_command_error", "⚠️ {client}: ошибка сети при {action} — {error}", "⚠️ {client}: network error during {action} — {error}")
+add("log_remote_admin_action_block", "блокировка", "block")
+add("log_remote_admin_action_unblock", "разблокировка", "unblock")
+add("log_remote_admin_action_status", "запрос статуса", "status request")
+add("log_remote_admin_action_ping", "ping", "ping")
