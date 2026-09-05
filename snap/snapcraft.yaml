@@ -1,0 +1,47 @@
+name: appblocker
+base: core24
+version: '3.0.0'
+summary: Блокировщик приложений и сайтов
+description: |
+  App Blocker — программа для ограничения доступа к приложениям и
+  веб-сайтам. Позволяет блокировать процессы, ограничивать доступ к
+  сайтам, защищать себя от завершения и восстанавливать работу после
+  перезапуска системы. Подходит для учебных заведений, офисов,
+  родительского контроля и домашнего использования.
+
+grade: stable
+confinement: strict
+
+apps:
+  appblocker:
+    command: bin/appblocker
+    extensions:
+      - gnome
+    plugs:
+      - network
+      - home
+
+parts:
+  appblocker:
+    plugin: python
+    source: .
+    python-packages:
+      - flet>=0.86,<0.87
+      - flet-desktop
+      - psutil>=7.0
+      - pystray>=0.19
+      - pillow>=10.0
+    stage-packages:
+      - libsecret-1-0
+    override-build: |
+      craftctl default
+      mkdir -p $CRAFT_PART_INSTALL/bin
+      cp -r $CRAFT_PART_SRC/Source/appcore $CRAFT_PART_INSTALL/
+      cp -r $CRAFT_PART_SRC/Source/gui $CRAFT_PART_INSTALL/
+      cp $CRAFT_PART_SRC/Source/AppBlocker.py $CRAFT_PART_INSTALL/
+      cat > $CRAFT_PART_INSTALL/bin/appblocker << 'EOF'
+      #!/bin/sh
+      cd $SNAP
+      exec python3 AppBlocker.py "$@"
+      EOF
+      chmod +x $CRAFT_PART_INSTALL/bin/appblocker

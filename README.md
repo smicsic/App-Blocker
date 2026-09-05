@@ -320,20 +320,6 @@ Linux/
 Начиная с этой версии, App Blocker портирован с Windows на Linux. Ниже — что
 изменилось по сравнению с Windows-версией.
 
-## Установка (Linux)
-
-### Способ 1 — через Snap Store (рекомендуется, одна команда)
-
-```bash
-sudo snap install appblocker
-```
-
-Готово! Приложение появится в меню приложений и будет обновляться автоматически.
-
-### Способ 2 — из исходников
-
-См. раздел ниже про сборку из исходного кода.
-
 ### Установка системных зависимостей
 
 Иконка в трее у `pystray` на Linux рисуется через GTK/AppIndicator, это
@@ -771,20 +757,6 @@ The entire source code is open and available for inspection on GitHub.
 
 As of this version, App Blocker has been ported from Windows to Linux. Here is
 what changed compared to the Windows version.
-
-## Installation (Linux)
-
-### Method 1 — via Snap Store (recommended, one command)
-
-```bash
-sudo snap install appblocker
-```
-
-Done! The app will appear in your applications menu and update automatically.
-
-### Method 2 — from source
-
-See the section below for building from source.
 
 ### System dependencies
 
