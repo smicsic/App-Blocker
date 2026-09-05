@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=App Blocker
+Comment=Блокировка приложений и сайтов
+Exec=/opt/AppBlocker/AppBlocker
+Icon=/opt/AppBlocker/icon.png
+Terminal=false
+Categories=Utility;

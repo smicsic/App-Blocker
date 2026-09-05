@@ -101,6 +101,15 @@ elif getattr(sys, 'frozen', False):
 else:
     APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # appcore/ -> Source/
 
+if os.environ.get("SNAP"):
+    APP_DIR = os.environ.get("SNAP_USER_COMMON", os.path.expanduser("~/.local/share/appblocker"))
+elif os.environ.get("FLATPAK_ID"):
+    APP_DIR = os.path.join(os.path.expanduser("~/.var/app"), os.environ["FLATPAK_ID"])
+elif getattr(sys, 'frozen', False):
+    APP_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # appcore/ -> Source/
+
 # Конфиг и состояние — по стандарту XDG Base Directory: настройки в
 # $XDG_CONFIG_HOME (обычно ~/.config), данные и статистика в
 # $XDG_DATA_HOME (обычно ~/.local/share). Всё, что раньше жило в одном
@@ -125,6 +134,16 @@ LOG_PATH = os.path.join(LOG_DIR, "appblocker.log")
 SINGLE_INSTANCE_LOCK_PATH = os.path.join(STATE_DIR, "appblocker.lock")
 os.makedirs(STATE_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
+
+# ---------- Remote Admin ----------
+# Пароль вкладки Remote Admin хранится отдельно от обычного config.json, в
+# XDG_CONFIG_HOME/AppBlocker/Pass — тот же путь и формат, что использует
+# AppBlockerGuard.Client для своего пароля выхода (см. AppBlocker_Client/auth.py).
+REMOTE_ADMIN_CONFIG_DIR = _xdg_dir("XDG_CONFIG_HOME", ".config")
+ADMIN_PASS_PATH = os.path.join(REMOTE_ADMIN_CONFIG_DIR, "Pass")
+TRUSTED_CLIENTS_PATH = os.path.join(REMOTE_ADMIN_CONFIG_DIR, "remote_admin_clients.json")
+REMOTE_ADMIN_SETTINGS_PATH = os.path.join(REMOTE_ADMIN_CONFIG_DIR, "remote_admin_settings.json")
+os.makedirs(REMOTE_ADMIN_CONFIG_DIR, exist_ok=True)
 
 # App Blocker открывается без запроса root. Действия, требующие root
 # (запись /etc/hosts), поднимают права точечно через pkexec.
