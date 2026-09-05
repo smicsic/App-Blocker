@@ -301,15 +301,9 @@ def show_security_disabled_dialog(ctx, on_enable_navigate):
 
 
 def show_security_protection_dialog(ctx, on_result):
-    """Большое окно про исключения антивируса. ``on_result(True|False)``."""
-    from appcore.security import (
-        check_antivirus_exception,
-        copy_app_folder_path,
-        get_app_folder_path,
-        open_antivirus_guide,
-        open_defender_exclusions_settings,
-    )
-    from appcore.theme import ACCENT, SUCCESS
+    """Окно с подтверждением включения системной защиты. ``on_result(True|False)``."""
+    from appcore.security import copy_app_folder_path, get_app_folder_path
+    from appcore.theme import ACCENT
 
     resolve = _resolve_once(on_result)
     app_path = get_app_folder_path()
@@ -323,19 +317,6 @@ def show_security_protection_dialog(ctx, on_result):
                 ctx.refresh(status_label)
 
         copy_app_folder_path(ctx, on_done=done)
-
-    def check_exclusions(event=None):
-        # Опрос Defender идёт через PowerShell — только в фоновом потоке.
-        def work():
-            found, message = check_antivirus_exception()
-            status_label.value = message
-            status_label.color = SUCCESS if found else WARNING
-            ctx.ui(ctx.refresh, status_label)
-
-        status_label.value = t("settings_status_checking")
-        status_label.color = TEXT_MUTED
-        ctx.refresh(status_label)
-        ctx.run_bg(work)
 
     def enable(event=None):
         _close(ctx, dialog)
@@ -367,10 +348,6 @@ def show_security_protection_dialog(ctx, on_result):
             ft.Row(
                 [
                     secondary_button(t("settings_copy_path_btn"), copy_and_mark, width=150),
-                    secondary_button(t("dialog_open_guide_btn"), open_antivirus_guide, width=160),
-                    secondary_button(t("dialog_check_btn"), check_exclusions, width=140),
-                    secondary_button(t("settings_open_exclusions_btn"),
-                                     open_defender_exclusions_settings, width=180),
                 ],
                 wrap=True,
                 spacing=8,

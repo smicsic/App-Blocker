@@ -23,45 +23,32 @@ def _lower_names(names):
     """Приводит набор имён к нижнему регистру.
 
     Сравнение всегда идёт с normalize_process_name(), то есть по нижнему
-    регистру. Запись в другом регистре не совпала бы никогда — так уже случалось
-    с MpCmdRun.exe и RstMwService.exe в списке ниже, а позже с Flet.exe здесь.
-    Приводим набор один раз при загрузке, чтобы регистр перестал иметь значение.
+    регистру. Запись в другом регистре не совпала бы никогда. Приводим набор
+    один раз при загрузке, чтобы регистр перестал иметь значение.
     """
     return frozenset(name.lower() for name in names)
 
 
 CRITICAL_PROCESS_NAMES = _lower_names({
     # Ядро ОС и вход в систему
-    "system", "idle", "system idle process", "registry", "memory compression",
-    "smss.exe", "csrss.exe", "wininit.exe", "winlogon.exe", "services.exe",
-    "lsass.exe", "lsaiso.exe", "svchost.exe", "logonui.exe", "userinit.exe",
-    "ngciso.exe", "fontdrvhost.exe", "dwm.exe",
-    # Оболочка: без этого пользователь останется без рабочего стола
-    "explorer.exe", "sihost.exe", "taskhostw.exe", "ctfmon.exe", "conhost.exe",
-    "shellexperiencehost.exe", "startmenuexperiencehost.exe", "searchhost.exe",
-    "searchindexer.exe", "searchapp.exe", "textinputhost.exe", "shellhost.exe",
-    "applicationframehost.exe", "lockapp.exe", "dllhost.exe", "runtimebroker.exe",
-    "backgroundtaskhost.exe", "widgetservice.exe", "widgets.exe",
-    # Диспетчер задач — оставляем пользователю аварийный выход
-    "taskmgr.exe",
-    # Безопасность и обновления
-    "msmpeng.exe", "nissrv.exe", "mpdefendercoreservice.exe", "mpcmdrun.exe",
-    "securityhealthservice.exe", "securityhealthsystray.exe", "smartscreen.exe",
-    "chxsmartscreen.exe", "mousocoreworker.exe", "trustedinstaller.exe",
-    "tiworker.exe", "sppsvc.exe", "wuauclt.exe",
-    # Интерфейс «Безопасность Windows» живёт в сессии пользователя, поэтому
-    # проверка владельца процесса его не отсекает — добавляем по имени.
-    "sechealthui.exe", "securityhealthhost.exe",
-    # Драйверы/периферия, без которых система деградирует
-    "audiodg.exe", "wudfhost.exe", "wmiprvse.exe", "wmiapsrv.exe",
-    "unsecapp.exe", "spoolsv.exe", "wlanext.exe", "rstmwservice.exe",
-    "nvcontainer.exe", "nvdisplay.container.exe",
-    # Само приложение и его защита. flet.exe — окно приложения: клиент Flet
+    "systemd", "systemd-logind", "systemd-journald", "systemd-udevd",
+    "systemd-resolved", "systemd-networkd", "systemd-oomd", "init", "kthreadd",
+    "dbus-daemon", "dbus-broker", "polkitd", "udisksd", "upowerd", "rtkit-daemon",
+    "logind", "accounts-daemon",
+    # Графическая сессия: без этого пользователь останется без рабочего стола
+    "xorg", "x", "xwayland", "gdm", "gdm3", "sddm", "lightdm", "lightdm-gtk-greeter",
+    "gnome-shell", "gnome-session-binary", "gnome-session", "plasmashell",
+    "kwin_x11", "kwin_wayland", "kwin", "sway", "swaybg", "hyprland", "weston",
+    "xfwm4", "xfce4-session", "xfdesktop", "lxqt-session", "mate-session",
+    "cinnamon", "cinnamon-session",
+    # Системные шины и оборудование
+    "networkmanager", "network-manager", "wpa_supplicant", "networkd-dispatcher",
+    "pulseaudio", "pipewire", "pipewire-pulse", "wireplumber", "bluetoothd",
+    # Само приложение и его защита. flet — окно приложения: клиент Flet
     # запускается ДОЧЕРНИМ процессом, а _self_process_names() обходит только
     # родителей, поэтому сам он под защиту не попадает и нужен здесь по имени.
     # Без этого whitelist-режим закрыл бы собственное окно программы.
-    "appblocker.exe", "appblockerguard.exe", "securesystem.exe",
-    "python.exe", "pythonw.exe", "flet.exe",
+    "appblocker", "appblockerguard", "python3", "python", "flet",
 })
 
 
@@ -69,8 +56,8 @@ def _self_process_names():
     """Имена текущего процесса и его родителей.
 
     Нужно, чтобы whitelist-режим не завершил сам App Blocker: при запуске из
-    исходников это python.exe, при запуске из сборки — AppBlocker.exe, а
-    родителем может быть IDE или терминал, из которого приложение запущено.
+    исходников это python3, при запуске из сборки — appblocker, а родителем
+    может быть IDE или терминал, из которого приложение запущено.
     """
     names = set()
     try:
@@ -117,8 +104,7 @@ def is_protected_process(process_name):
         or process_name in NON_USER_PROCESS_NAMES
     ):
         return True
-    # Служебные процессы Windows: "windowsterminal.exe" и прочее семейство.
-    return process_name.startswith("windows")
+    return False
 
 
 def is_own_user_process(proc):
@@ -162,38 +148,24 @@ def _build_non_user_process_names():
     from appcore.paths import GUARD_EXE_NAME
 
     system_names = {
-        "system", "idle", "svchost.exe", "smss.exe", "wininit.exe",
-        "csrss.exe", "winlogon.exe", "services.exe", "lsass.exe",
-        "dllhost.exe", "runtimebroker.exe", "searchindexer.exe",
-        "explorer.exe", "crossdeviceresume.exe", "fmaudiomonitor.exe",
-        "fmservice64.exe", "fnhotkeycapslknumlk.exe", "fnhotkeyutility.exe",
-        "intelaudioservice.exe", "lenovoutilityservice.exe",
-        "lenovovantage-(genericmessagingaddin).exe",
-        "lenovovantage-(lenovogamingsystemaddin).exe",
-        "lenovovantage-(vantagecoreaddin).exe", "lenovovantageservice.exe",
-        "locator.exe", "lockapp.exe", "lsaiso.exe", "mpdefendercoreservice.exe",
-        "msmpeng.exe", "nvdisplay.container.exe", "nahimicservice.exe",
-        "ngciso.exe", "nhnotifsys.exe", "nissrv.exe", "openconsole.exe",
-        "registry", "rtkauduservice64.exe", "rtkbtmanserv.exe", "searchhost.exe",
-        "securityhealthservice.exe", "securityhealthsystray.exe",
-        "shellhost.exe", "startmenuexperiencehost.exe",
-        "system idle process", "textinputhost.exe",
-        "wmiregistrationservice.exe", "wudfhost.exe", "wmiapsrv.exe",
-        "wmiprvse.exe", "backgroundtaskhost.exe",
-        "conhost.exe", "ctfmon.exe", "dwm.exe", "fontdrvhost.exe",
-        "fsnotifier.exe", "full-line-inference.exe", "ipf_helper.exe",
-        "ipf_uf.exe", "ipfsvc.exe", "jhi_service.exe", "msedgewebview2.exe",
-        "powershell.exe", "pycharm64.exe", "python.exe", "sihost.exe",
-        "spoolsv.exe", "taskhostw.exe", "unsecapp.exe", "MoUsoCoreWorker.exe", "ApplicationFrameHost.exe",
-        "LenovoVantage-(GenericTelemetryAddin).exe",
-        "audiodg.exe", "smartscreen.exe", "appblocker.exe", GUARD_EXE_NAME.lower(), "ApplicationFrameHost.exe",
-        "CHXSmartScreen.exe", "LADMAutoInstallService.exe", "MpCmdRun.exe", "RstMwService.exe",
-        "ShellExperienceHost.exe", "WidgetService.exe", "cef_server.exe", "nvcontainer.exe",
-        "wlanext.exe"
+        "system", "idle", "kthreadd", "init",
+        "systemd", "systemd-logind", "systemd-journald", "systemd-udevd",
+        "systemd-resolved", "systemd-networkd", "systemd-oomd",
+        "dbus-daemon", "dbus-broker", "polkitd", "udisksd", "upowerd",
+        "rtkit-daemon", "accounts-daemon",
+        "gdm", "gdm3", "sddm", "lightdm", "lightdm-gtk-greeter",
+        "gnome-shell", "gnome-session-binary", "gnome-session",
+        "plasmashell", "kwin_x11", "kwin_wayland", "kwin",
+        "sway", "swaybg", "hyprland", "weston",
+        "xorg", "x", "xwayland",
+        "xfwm4", "xfce4-session", "xfdesktop", "lxqt-session",
+        "mate-session", "cinnamon", "cinnamon-session",
+        "networkmanager", "network-manager", "wpa_supplicant",
+        "networkd-dispatcher", "bluetoothd",
+        "pulseaudio", "pipewire", "pipewire-pulse", "wireplumber",
+        "cron", "crond", "atd",
+        "appblocker", GUARD_EXE_NAME.lower(), "python3", "python",
     }
-    # Часть имён в наборе выше записана в CamelCase, а сравнение идёт с
-    # name.lower() — без приведения к нижнему регистру такие записи никогда не
-    # совпадали бы (MpCmdRun.exe, RstMwService.exe, ApplicationFrameHost.exe...).
     return _lower_names(system_names)
 
 
@@ -208,7 +180,7 @@ def get_user_processes():
     завершается, а что нельзя завершить — то и не предлагается. Раньше фильтр
     смотрел только NON_USER_PROCESS_NAMES, и защищённые процессы всё равно
     попадали в список с кнопкой «Добавить»: нажатие ничего не давало, а окно
-    самого приложения (flet.exe) выглядело так, будто его можно заблокировать.
+    самого приложения (flet) выглядело так, будто его можно заблокировать.
     """
     processes = []
     for proc in psutil.process_iter(['name']):

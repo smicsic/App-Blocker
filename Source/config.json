@@ -1,6 +1,8 @@
 {
-  "process_name": "",
-  "blocked_programs": [],
+  "process_name": "pycharm",
+  "blocked_programs": [
+    "pycharm"
+  ],
   "admin_password_hash": "",
   "admin_password_salt": "",
   "status": "EXIT",

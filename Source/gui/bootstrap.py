@@ -21,7 +21,6 @@ import flet as ft
 import psutil
 
 from appcore import state
-from appcore.admin import is_admin
 from appcore.config_store import (
     has_admin_password,
     load_config,
@@ -40,12 +39,11 @@ from appcore.lifecycle import (
 )
 from appcore.i18n import load_language, t
 from appcore.logging_util import log
-from appcore.paths import GUARD_EXE, GUARD_STARTUP_NAME, find_flet_client_dir
+from appcore.paths import find_flet_client_dir
 from appcore.processes import monitor_process, sync_primary_process_name
 from appcore.security import (
     ensure_app_startup_entries,
     ensure_appblocker_guard,
-    ensure_startup_entry,
     is_guard_process_name,
     start_guard_watch_thread,
 )
@@ -213,8 +211,6 @@ def _continue(ctx, startup_status, launched_by_guard, guard_recovery_active,
     запись hosts — на цикле событий это остановило бы весь интерфейс.
     """
     def work():
-        has_admin_rights_at_startup = is_admin()
-
         guard_should_run_at_startup = state.SECURE_ENABLED and (
             startup_status == "RUNNING" or should_restore_monitoring or should_restore_sites
             or launched_by_guard
@@ -223,22 +219,15 @@ def _continue(ctx, startup_status, launched_by_guard, guard_recovery_active,
         if guard_should_run_at_startup:
             if ensure_appblocker_guard():
                 log(t("log_guard_started_at_boot"))
-            if has_admin_rights_at_startup:
-                ensure_app_startup_entries(on_status_update=ctx.update_startup_status_labels)
-            else:
-                ensure_startup_entry(GUARD_STARTUP_NAME, GUARD_EXE)
-                log(t("log_guard_started_no_admin"))
+            ensure_app_startup_entries(on_status_update=ctx.update_startup_status_labels)
             start_guard_watch_thread("log_guard_watch_started_startup")
         elif state.SECURE_ENABLED:
             log(t("log_protection_enabled_not_active"))
 
         if should_restore_monitoring or should_restore_sites:
-            if has_admin_rights_at_startup:
-                ensure_app_startup_entries(on_status_update=ctx.update_startup_status_labels)
-                if ensure_appblocker_guard():
-                    log(t("log_termination_protection_started"))
-            else:
-                log(t("log_no_admin_skip_all"))
+            ensure_app_startup_entries(on_status_update=ctx.update_startup_status_labels)
+            if ensure_appblocker_guard():
+                log(t("log_termination_protection_started"))
         elif startup_status == "EXIT":
             log(t("log_exit_status_found"))
 
@@ -260,13 +249,11 @@ def _continue(ctx, startup_status, launched_by_guard, guard_recovery_active,
             log(t("log_monitoring_restored", programs=', '.join(state.BLOCKED_PROGRAMS)))
 
         if should_restore_sites:
-            if not has_admin_rights_at_startup:
-                log(t("log_sites_not_restored_no_admin"))
-            elif apply_hosts_block(startup_sites):
+            if apply_hosts_block(startup_sites):
                 ctx.ui(ctx.refresh_sites_list)
                 log(t("log_sites_restored", count=len(startup_sites)))
 
-        if (has_admin_rights_at_startup and (should_restore_monitoring or should_restore_sites)
+        if ((should_restore_monitoring or should_restore_sites)
                 and state.SECURE_ENABLED and not state.watch_active):
             start_guard_watch_thread("log_guard_watch_started_startup")
         elif state.watch_active:

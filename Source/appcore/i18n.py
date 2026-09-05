@@ -140,8 +140,6 @@ add("log_program_removed", "🗑️ {program} удалён из списка б�
 add("log_program_added", "✅ {program} добавлен в список блокировки.", "✅ {program} added to the block list.")
 add("log_add_at_least_one_program", "❗ Для блокировки программ добавьте хотя бы одну программу. Сайты блокируются отдельно во вкладке «Сайты».", "❗ Add at least one program to start blocking. Websites are blocked separately on the Websites tab.")
 add("log_guard_activated", "🛡 AppBlockerGuard активирован", "🛡 AppBlockerGuard activated")
-add("log_monitoring_no_admin_with_guard", "ℹ️ Мониторинг программ запущен без прав администратора: AppBlockerGuard активирован, автозапуск через реестр настроен.", "ℹ️ Program monitoring started without administrator rights: AppBlockerGuard is active, startup configured via registry.")
-add("log_monitoring_no_admin_no_guard", "ℹ️ Мониторинг программ запущен без прав администратора: расширенный автозапуск пропущен.", "ℹ️ Program monitoring started without administrator rights: extended startup setup skipped.")
 add("log_monitoring_already_active", "⚠️ Мониторинг процесса '{process}' уже активен.", "⚠️ Monitoring for process '{process}' is already active.")
 add("log_permanent_lock_activated", "🔒 Вечная блокировка активирована — переключатели больше нельзя изменить.", "🔒 Permanent lock activated — switches can no longer be changed.")
 add("log_monitoring_started", "🚀 Мониторинг процесса '{process}' запущен.", "🚀 Monitoring for process '{process}' started.")
@@ -173,7 +171,7 @@ add("settings_title", "Настройки", "Settings")
 add("settings_protection_state_title", "Состояние защиты", "Protection status")
 add("settings_startup_app_label", "Автозапуск AppBlocker", "AppBlocker autostart")
 add("settings_startup_guard_label", "Автозапуск AppBlockerGuard", "AppBlockerGuard autostart")
-add("settings_guard_file_label", "Файл AppBlockerGuard.exe", "AppBlockerGuard.exe file")
+add("settings_guard_file_label", "Файл AppBlockerGuard", "AppBlockerGuard file")
 add("settings_status_checking", "Проверяется...", "Checking...")
 add("settings_status_active", "Активен", "Active")
 add("settings_status_not_configured", "Не настроен", "Not configured")
@@ -199,11 +197,8 @@ add("settings_secure_switch_label_on", "Защита от завершения �
 add("settings_secure_switch_label_off", "Защита от завершения выключена", "Termination protection is off")
 add("settings_secure_state_active", "Активна: AppBlockerGuard будет защищать приложение от закрытия.", "Active: AppBlockerGuard will protect the app from being closed.")
 add("settings_secure_state_inactive", "Выключена: приложение можно закрыть через диспетчер задач.", "Off: the app can be closed via Task Manager.")
-add("settings_secure_description", "Использует SecureSystem и автозапуск. Для стабильной работы может потребоваться исключение антивируса.", "Uses SecureSystem and autostart. An antivirus exclusion may be required for stable operation.")
-add("settings_guide_btn", "Инструкция", "Guide")
+add("settings_secure_description", "Использует AppBlockerGuard и автозапуск при входе в систему.", "Uses AppBlockerGuard and autostart at login.")
 add("settings_copy_path_btn", "Скопировать путь", "Copy path")
-add("settings_check_exclusion_btn", "Проверить исключение", "Check exclusion")
-add("settings_open_exclusions_btn", "Открыть исключения", "Open exclusions")
 
 # -------------------- Режим блокировки (blacklist / whitelist) --------------------
 add("settings_block_mode_title", "Режим блокировки", "Blocking mode")
@@ -298,7 +293,7 @@ add("about_body",
     """APP BLOCKER
 Версия: 3.0.0
 
-App Blocker — это инструмент для ограничения запуска выбранных программ и сайтов на Windows.
+App Blocker — это инструмент для ограничения запуска выбранных программ и сайтов на Linux.
 Приложение отслеживает список процессов, завершает запрещённые при запуске и позволяет блокировать сайты через системный файл hosts.
 
 ЧТО ЕСТЬ В ВЕРСИИ 3.0.0
@@ -306,7 +301,7 @@ App Blocker — это инструмент для ограничения зап
 Блокировка программ:
 
 * Два режима: «Чёрный список» завершает выбранные программы, «Белый список» разрешает работать только выбранным.
-* В режиме «Белый список» системное защищено двумя независимыми барьерами: списком «никогда не завершать» (ядро ОС, вход в систему, Проводник, антивирус, Диспетчер задач, сам App Blocker и AppBlockerGuard) и проверкой владельца процесса — завершаются только процессы вашей учётной записи, поэтому службы отсекаются сами, без перечисления имён.
+* В режиме «Белый список» системное защищено двумя независимыми барьерами: списком «никогда не завершать» (ядро ОС, графическая сессия, сетевые и звуковые службы, сам App Blocker и AppBlockerGuard) и проверкой владельца процесса — завершаются только процессы вашей учётной записи, поэтому системные службы отсекаются сами, без перечисления имён.
 * Защищены сам процесс приложения и цепочка его родителей: при запуске из исходников режим не завершит ни Python, ни среду разработки.
 * Два режима совпадения имён: «Содержит» и «Точное имя».
 * Мониторинг активных процессов в реальном времени и автовосстановление после перезапуска.
@@ -345,7 +340,7 @@ App Blocker — это инструмент для ограничения зап
 Защита и безопасность:
 
 * AppBlockerGuard: защита от завершения и автовосстановление.
-* Автозапуск через планировщик задач и реестр Windows.
+* Автозапуск при входе в систему через .desktop-файл (XDG autostart).
 * Пароль администратора хранится в виде PBKDF2-хеша.
 * После запуска блокировки запираются все переключатели, которыми её можно ослабить.
 * Мягкую блокировку при этом выключить можно всегда — это делает блокировку строже, — а включить на ходу нельзя.
@@ -388,7 +383,7 @@ App Blocker — это инструмент для ограничения зап
     """APP BLOCKER
 Version: 3.0.0
 
-App Blocker is a tool for restricting the launch of selected programs and websites on Windows.
+App Blocker is a tool for restricting the launch of selected programs and websites on Linux.
 The app watches the process list, terminates blocked programs when they start, and can block websites through the system hosts file.
 
 WHAT'S IN VERSION 3.0.0
@@ -396,7 +391,7 @@ WHAT'S IN VERSION 3.0.0
 Program blocking:
 
 * Two modes: "Blacklist" terminates the selected programs, "Whitelist" lets only the selected ones run.
-* In "Whitelist" mode the system is protected by two independent barriers: a never-terminate list (OS core, logon, Explorer, antivirus, Task Manager, App Blocker itself and AppBlockerGuard) and a process owner check — only processes of your own account are terminated, so services are excluded by themselves, without listing their names.
+* In "Whitelist" mode the system is protected by two independent barriers: a never-terminate list (OS core, graphical session, network and audio services, App Blocker itself and AppBlockerGuard) and a process owner check — only processes of your own account are terminated, so system services are excluded by themselves, without listing their names.
 * The application's own process and its parent chain are protected: when run from source, the mode will not terminate Python or your IDE.
 * Two name matching modes: "Contains" and "Exact name".
 * Real-time monitoring of active processes and auto-recovery after a restart.
@@ -435,7 +430,7 @@ Websites:
 Protection and security:
 
 * AppBlockerGuard: termination protection and auto-recovery.
-* Autostart via Task Scheduler and the Windows registry.
+* Autostart at login via a .desktop file (XDG autostart).
 * The administrator password is stored as a PBKDF2 hash.
 * Once blocking starts, everything that could weaken it is locked.
 * Soft blocking can still be switched off at any time — that makes blocking stricter — but it cannot be switched on while blocking is already running.
@@ -520,7 +515,6 @@ add("log_schedule_window_end_permanent", "🔒 Окно расписания з�
 add("log_schedule_needs_programs", "⚠️ Окно расписания началось, но список программ пуст — блокировать нечего.", "⚠️ A scheduled window started, but the program list is empty — nothing to block.")
 add("log_schedule_monitoring_started", "🚀 Мониторинг запущен по расписанию.", "🚀 Monitoring started by the schedule.")
 add("log_schedule_monitoring_stopped", "🛑 Мониторинг остановлен по расписанию.", "🛑 Monitoring stopped by the schedule.")
-add("log_schedule_sites_no_admin", "ℹ️ Сайты по расписанию не переключены: для записи hosts нужны права администратора.", "ℹ️ Scheduled site blocking skipped: writing hosts requires administrator rights.")
 
 # ==================== Вкладка «Статистика» ====================
 add("nav_stats", "Статистика", "Statistics")
@@ -576,10 +570,10 @@ add("dialog_no_password_set", "Пароль не задан! Программа 
 add("dialog_access_denied", "Доступ заблокирован без правильного пароля.", "Access denied without the correct password.")
 add("dialog_first_setup_title", "Первичная настройка", "Initial setup")
 add("dialog_first_setup_message",
-    "App Blocker будет завершать выбранные программы и может восстанавливать мониторинг после перезапуска Windows.\n\n"
+    "App Blocker будет завершать выбранные программы и может восстанавливать мониторинг после перезапуска системы.\n\n"
     "Сейчас нужно создать пароль администратора. Он потребуется для выхода и изменения защищённых сценариев.\n\n"
     "Сохраните пароль: без него корректный выход будет невозможен.",
-    "App Blocker will terminate the selected programs and may restore monitoring after Windows restarts.\n\n"
+    "App Blocker will terminate the selected programs and may restore monitoring after the system restarts.\n\n"
     "Now you need to create an administrator password. It will be required to exit and change protected scenarios.\n\n"
     "Save the password: without it, a correct exit will be impossible.")
 add("dialog_security_disabled_title", "Защита выключена", "Protection is off")
@@ -591,54 +585,37 @@ add("dialog_enable_btn", "Включить", "Enable")
 add("dialog_decline_btn", "Отказаться", "Decline")
 add("dialog_enable_protection_question", "Включить системную защиту?", "Enable system protection?")
 add("dialog_protection_message",
-    "App Blocker использует автозагрузку, AppBlockerGuard (SecureSystem) и защиту от завершения. "
-    "Из-за этого антивирус может ошибочно заблокировать программу.\n\n"
-    "Чтобы защита работала стабильно, добавьте папку App Blocker в исключения антивируса.\n\n"
+    "App Blocker использует автозапуск, AppBlockerGuard и защиту от завершения.\n\n"
     "Вы можете доверять программе: исходный код открыт и доступен для проверки:\n"
-    "https://github.com/smicsic/App-Blocker/blob/master/Source/SecureSystem.py",
-    "App Blocker uses autostart, AppBlockerGuard (SecureSystem), and termination protection. "
-    "Because of this, your antivirus may mistakenly block the program.\n\n"
-    "For protection to work reliably, add the App Blocker folder to your antivirus exclusions.\n\n"
+    "https://github.com/smicsic/App-Blocker",
+    "App Blocker uses autostart, AppBlockerGuard, and termination protection.\n\n"
     "You can trust the program: the source code is open and available for review:\n"
-    "https://github.com/smicsic/App-Blocker/blob/master/Source/SecureSystem.py")
+    "https://github.com/smicsic/App-Blocker")
 add("dialog_program_folder_label", "Папка программы", "Program folder")
-add("dialog_path_copied", "Путь скопирован. Добавьте эту папку в исключения антивируса.", "Path copied. Add this folder to your antivirus exclusions.")
-add("dialog_i_added_enable_btn", "Я добавил, включить", "I added it, enable")
+add("dialog_path_copied", "Путь скопирован.", "Path copied.")
+add("dialog_i_added_enable_btn", "Включить", "Enable")
 add("dialog_cancel_plain", "Отмена", "Cancel")
-add("dialog_check_exception_title", "Проверка исключения", "Exclusion check")
-add("dialog_open_guide_btn", "Открыть инструкцию", "Open guide")
-add("dialog_check_btn", "Проверить", "Check")
 
 # ==================== Диагностика / автозапуск ====================
 add("log_startup_configured_both", "✅ Автозапуск настроен для AppBlocker и AppBlockerGuard", "✅ Autostart configured for AppBlocker and AppBlockerGuard")
 add("log_startup_app_only", "⚠️ Автозапуск AppBlocker настроен, но AppBlockerGuard не найден или не добавлен", "⚠️ AppBlocker autostart configured, but AppBlockerGuard was not found or added")
-add("log_startup_failed", "⚠️ Не удалось настроить автозапуск. Проверь запуск от имени администратора.", "⚠️ Failed to configure autostart. Check that you're running as administrator.")
+add("log_startup_failed", "⚠️ Не удалось настроить автозапуск.", "⚠️ Failed to configure autostart.")
 add("log_diagnostics_summary", "🧪 Диагностика защиты: {ok}/{total} проверок пройдено", "🧪 Protection diagnostics: {ok}/{total} checks passed")
-add("diag_admin_rights", "Права администратора", "Administrator rights")
-add("diag_app_exe_found", "AppBlocker.exe найден", "AppBlocker.exe found")
-add("diag_guard_exe_found", "AppBlockerGuard.exe найден", "AppBlockerGuard.exe found")
+add("diag_admin_rights", "Права root", "Root rights")
+add("diag_app_exe_found", "AppBlocker найден", "AppBlocker found")
+add("diag_guard_exe_found", "AppBlockerGuard найден", "AppBlockerGuard found")
 add("diag_config_accessible", "config.json доступен", "config.json accessible")
 add("diag_password_hashed", "Пароль защищён хешем", "Password protected by hash")
-add("diag_task_app", "Задача AppBlocker", "AppBlocker task")
-add("diag_task_guard", "Задача AppBlockerGuard", "AppBlockerGuard task")
-add("diag_registry_app", "Реестр AppBlocker", "AppBlocker registry")
-add("diag_registry_guard", "Реестр AppBlockerGuard", "AppBlockerGuard registry")
+add("diag_autostart_app", "Автозапуск AppBlocker", "AppBlocker autostart")
+add("diag_autostart_guard", "Автозапуск AppBlockerGuard", "AppBlockerGuard autostart")
 add("diag_guard_running", "AppBlockerGuard запущен", "AppBlockerGuard running")
 add("diag_hosts_access", "Доступ к hosts", "hosts file access")
-add("log_guard_exe_not_found", "⚠️ AppBlockerGuard.exe не найден: {path}", "⚠️ AppBlockerGuard.exe not found: {path}")
-add("log_guide_open_failed", "Не удалось открыть инструкцию: {error}", "Failed to open the guide: {error}")
-add("log_defender_exclusions_opened", "Открыт раздел исключений Windows Security.", "Windows Security exclusions section opened.")
-add("log_defender_exclusions_open_failed", "⚠️ Не удалось открыть раздел исключений Windows Security.", "⚠️ Failed to open the Windows Security exclusions section.")
+add("log_guard_exe_not_found", "⚠️ AppBlockerGuard не найден: {path}", "⚠️ AppBlockerGuard not found: {path}")
 add("log_path_copied", "Путь App Blocker скопирован: {path}", "App Blocker path copied: {path}")
 add("log_path_copy_failed", "Не удалось скопировать путь: {error}", "Failed to copy the path: {error}")
-add("log_defender_check_failed", "⚠️ Проверка исключения Defender не выполнена: {error}", "⚠️ Defender exclusion check failed: {error}")
 add("log_guard_activated_generic", "🛡 AppBlockerGuard активирован", "🛡 AppBlockerGuard activated")
-add("log_protection_enabled_registry_only", "ℹ️ Защита включена. Автозапуск через реестр настроен, расширенная задача Windows требует прав администратора.", "ℹ️ Protection enabled. Startup configured via registry; the extended Windows task requires administrator rights.")
 add("log_protection_enabled_by_user", "🛡 Защита включена пользователем.", "🛡 Protection enabled by the user.")
-add("defender_admin_required", "⚠️ Windows Defender не даёт проверить исключения без прав администратора. Если папка уже добавлена, нажмите 'Я добавил, включить'.", "⚠️ Windows Defender won't let us check exclusions without administrator rights. If the folder is already added, click \"I added it, enable\".")
-add("defender_check_unavailable", "⚠️ Не удалось проверить исключения Windows Defender. Если вы используете другой антивирус, добавьте путь вручную и нажмите 'Я добавил, включить'.", "⚠️ Failed to check Windows Defender exclusions. If you use a different antivirus, add the path manually and click \"I added it, enable\".")
-add("defender_found", "✅ Папка App Blocker найдена в исключениях Windows Defender.", "✅ The App Blocker folder is in the Windows Defender exclusions.")
-add("defender_not_found", "⚠️ Папка не найдена в исключениях Windows Defender. Если вы используете другой антивирус, добавьте путь вручную и нажмите 'Я добавил, включить'.", "⚠️ Folder not found in Windows Defender exclusions. If you use a different antivirus, add the path manually and click \"I added it, enable\".")
+add("log_process_cleanup_error", "⚠️ Ошибка при завершении процесса: {error}", "⚠️ Error while terminating a process: {error}")
 
 # ==================== Конфигурация (импорт/экспорт) ====================
 add("dialog_export_settings_title", "Экспорт настроек", "Export settings")
@@ -688,12 +665,13 @@ add("log_no_blocked_programs_running", "✅ Заблокированные пр�
 
 # ==================== Сайты (hosts) ====================
 add("log_browsers_closed", "🔄 Браузеры закрыты для мгновенного применения блокировки: {names}", "🔄 Browsers closed to instantly apply blocking: {names}")
-add("log_hosts_no_admin", "❌ Нет прав администратора для изменения hosts. Перезапусти App Blocker от имени администратора.", "❌ No administrator rights to modify hosts. Restart App Blocker as administrator.")
+add("log_hosts_no_admin", "❌ Не удалось изменить hosts: доступ через pkexec не подтверждён.", "❌ Failed to modify hosts: pkexec access was not granted.")
+add("log_hosts_pkexec_failed", "❌ pkexec не смог записать /etc/hosts: {error}", "❌ pkexec failed to write /etc/hosts: {error}")
 add("log_hosts_missing_sites", "⚠️ Не все сайты попали в hosts: {sites}", "⚠️ Not all sites made it into hosts: {sites}")
 add("log_hosts_old_entries_remain", "⚠️ В hosts остались старые записи App Blocker", "⚠️ Old App Blocker entries remain in hosts")
 add("log_hosts_applied", "🌐 Блокировка сайтов применена: {rules} правил, {domains} доменов в hosts", "🌐 Website blocking applied: {rules} rule(s), {domains} domain(s) in hosts")
 add("log_hosts_cleared", "🧹 Блокировка сайтов очищена", "🧹 Website blocking cleared")
-add("log_hosts_no_admin2", "❌ Нет прав для изменения hosts. Запусти App Blocker от имени администратора.", "❌ No rights to modify hosts. Run App Blocker as administrator.")
+add("log_hosts_no_admin2", "❌ Нет прав для изменения hosts.", "❌ No rights to modify hosts.")
 add("log_hosts_block_error", "⚠️ Ошибка блокировки сайтов: {error}", "⚠️ Website blocking error: {error}")
 
 # ==================== Трей ====================
@@ -709,13 +687,10 @@ add("log_timer_switch_locked", "🔒 Переключатель таймера �
 add("log_guard_restored_app", "🛡 AppBlocker восстановлен AppBlockerGuard после завершения процесса.", "🛡 AppBlocker was restored by AppBlockerGuard after the process ended.")
 add("log_admin_password_confirmed", "🔓 Пароль администратора подтверждён.", "🔓 Administrator password confirmed.")
 add("log_guard_started_at_boot", "🛡 AppBlockerGuard запущен при старте AppBlocker", "🛡 AppBlockerGuard started when AppBlocker launched")
-add("log_guard_started_no_admin", "ℹ️ AppBlockerGuard запущен без прав администратора; задача автозапуска с повышенными правами будет настроена при запуске от администратора.", "ℹ️ AppBlockerGuard started without administrator rights; the elevated startup task will be configured when run as administrator.")
 add("log_protection_enabled_not_active", "ℹ️ Защита включена, но блокировка не активна — AppBlockerGuard не запускается до старта блокировки.", "ℹ️ Protection is enabled, but blocking is not active — AppBlockerGuard won't start until blocking begins.")
 add("log_termination_protection_started", "🛡 Система защиты от завершения запущена", "🛡 Termination protection system started")
-add("log_no_admin_skip_all", "ℹ️ App Blocker открыт без прав администратора: автозапуск, AppBlockerGuard и восстановление hosts пропущены.", "ℹ️ App Blocker opened without administrator rights: autostart, AppBlockerGuard, and hosts restoration were skipped.")
 add("log_exit_status_found", "ℹ️ Найден статус EXIT — автозапуск блокировок пропущен.", "ℹ️ EXIT status found — automatic block restore skipped.")
 add("log_monitoring_restored", "✅ Автовосстановление мониторинга для программ: {programs}", "✅ Monitoring auto-restored for programs: {programs}")
-add("log_sites_not_restored_no_admin", "ℹ️ Блокировка сайтов не восстановлена: для записи hosts нужны права администратора.", "ℹ️ Website blocking was not restored: writing hosts requires administrator rights.")
 add("log_sites_restored", "🌐 Автовосстановление блокировки сайтов: {count}", "🌐 Website blocking auto-restored: {count}")
 add("log_guard_monitoring_already_active", "ℹ️ Мониторинг AppBlockerGuard уже активен", "ℹ️ AppBlockerGuard monitoring is already active")
 add("log_guard_watch_started", "👁️ Мониторинг AppBlockerGuard запущен", "👁️ AppBlockerGuard monitoring started")

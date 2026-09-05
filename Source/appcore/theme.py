@@ -62,16 +62,13 @@ BORDER_WIDTH = 1
 # ---------- Шрифты ----------
 APP_FONT_FILE = "Huninn-Regular.ttf"
 APP_FONT_FAMILY = "Huninn"
-# Segoe UI — системный шрифт Windows: нейтральный и строгий. Фирменный Huninn
-# скруглённый и дружелюбный, он спорит с типографикой EGS. Чтобы вернуть его,
-# достаточно написать FONT_FAMILY = APP_FONT_FAMILY: файл шрифта регистрируется
-# в page.fonts при старте окна (см. gui/shell.py).
-FONT_FAMILY = "Segoe UI"
-# Consolas есть в любой Windows, в отличие от JetBrains Mono: если моношрифт не
-# установлен, подставится системный, и панель логов будет выглядеть случайной.
-MONO_FONT_FAMILY = "Consolas"
-
-ANTIVIRUS_GUIDE_URL = "https://www.youtube.com/watch?v=pG03P8DdJzg"
-DEFENDER_EXCLUSIONS_URI = "windowsdefender://exclusions"
-DEFENDER_THREAT_SETTINGS_URI = "windowsdefender://threatsettings"
-WINDOWS_SECURITY_SETTINGS_URI = "ms-settings:windowsdefender"
+# На Linux нет единого системного шрифта уровня Segoe UI — набор гарнитур
+# отличается от дистрибутива к дистрибутиву. Поэтому используем забандленный
+# Huninn как основной шрифт: он регистрируется в page.fonts при старте окна
+# (см. gui/shell.py) и даёт одинаковый вид независимо от системы пользователя.
+FONT_FAMILY = APP_FONT_FAMILY
+# DejaVu Sans Mono ставится практически на любом дистрибутиве Linux
+# (зависимость самого fontconfig). В отличие от CSS, Flet/Flutter не читают
+# список через запятую в font_family, поэтому фоллбэк тут только один шрифт;
+# если его всё же нет, Flutter молча подставит системный моношрифт.
+MONO_FONT_FAMILY = "DejaVu Sans Mono"

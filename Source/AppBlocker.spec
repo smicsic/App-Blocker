@@ -14,13 +14,11 @@ def asset_path(*parts):
 
 
 datas = []
-datas += [(asset_path('..', 'Program', 'icon.ico'), '.')]
+datas += [(asset_path('..', 'Program', 'icon.png'), '.')]
 datas += [(asset_path('Huninn-Regular.ttf'), '.')]
 binaries = []
 hiddenimports = []
 tmp_ret = collect_all('psutil')
-datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
-tmp_ret = collect_all('pyfiglet')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 tmp_ret = collect_all('pystray')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
@@ -32,16 +30,16 @@ tmp_ret = collect_all('flet_desktop')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 # ---------------------------------------------------------------------------
-# Клиент Flet (flet.exe и его DLL, ~100 МБ) в пакет flet-desktop НЕ входит: при
-# первом запуске тот скачивает его с GitHub в %USERPROFILE%\.flet. Для готовой
-# программы это неприемлемо — App Blocker стартует при входе в Windows и
-# перезапускается AppBlockerGuard, то есть может подниматься без интернета.
+# Клиент Flet (~100 МБ) в пакет flet-desktop НЕ входит: при первом запуске тот
+# скачивает его с GitHub в ~/.flet. Для готовой программы это неприемлемо —
+# App Blocker стартует при входе в систему и перезапускается AppBlockerGuard,
+# то есть может подниматься без интернета.
 #
-# Поэтому клиент кладётся ПАПКОЙ РЯДОМ с AppBlocker.exe (см. README и
-# appcore.paths.find_flet_client_dir), а не внутрь exe: один файл на 100 МБ
-# пришлось бы распаковывать в temp при каждом запуске.
+# Поэтому клиент кладётся ПАПКОЙ РЯДОМ с бинарником (см. README и
+# appcore.paths.find_flet_client_dir), а не внутрь бинарника: один файл на
+# 100 МБ пришлось бы распаковывать в temp при каждом запуске.
 #
-# BUNDLE_FLET_CLIENT=1 включает встраивание клиента в exe — вариант для
+# BUNDLE_FLET_CLIENT=1 включает встраивание клиента в бинарник — вариант для
 # «одного файла», если раздавать папку неудобно.
 # ---------------------------------------------------------------------------
 if os.environ.get('BUNDLE_FLET_CLIENT') == '1':
@@ -93,6 +91,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=[asset_path('..', 'Program', 'icon.ico')],
-    uac_admin=True,
+    # PyInstaller на Linux не встраивает icon в ELF (это PE-специфичная фича),
+    # параметр здесь безвреден и просто игнорируется.
+    icon=[asset_path('..', 'Program', 'icon.png')],
 )
